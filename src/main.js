@@ -2,7 +2,12 @@
 const containerClass = document.querySelector('.main-section-container');
 const textClass = document.querySelector('.test-text');
 const btnClass = document.querySelector('.btn');
-
+const getBtnClass = document.querySelector('.get-btn');
+const selectedWells = [];
+const modalOverlay = document.querySelector('.modal-overlay');
+const closeModalBtn = document.querySelector('.close-modal');
+const modalWindow = document.querySelector('.modal');
+const modalForm = document.querySelector('.modal-form');
 ///////////////////////////
 
 function getWellPositions(){
@@ -38,7 +43,7 @@ function renderRack(){
 
 function handleClick(evt){
     evt.target.style.backgroundColor = 'blue';
-    console.log(evt.target);
+    selectedWells.push(evt.target.classList[1]);
 }
 
 
@@ -64,3 +69,10 @@ wellClass.forEach(well => {
 btnClass.addEventListener('click', handleBtnClick);
 
 
+getBtnClass.addEventListener('click', () => {
+    modalOverlay.classList.toggle('active');
+});
+
+closeModalBtn.addEventListener('click', () => {
+    modalOverlay.classList.toggle('active');
+});
