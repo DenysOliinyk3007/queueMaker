@@ -101,9 +101,9 @@
   <div class="stage">
     <div class="panel">
       <div class="panel-hd">
-        <h2>Plate selection</h2>
+        <h2>Plate selection <span style="font-weight:400;color:var(--ink-faint);font-size:12px;">— paint a set, then add it to the queue</span></h2>
         <div class="spacer"></div>
-        <button type="button" class="mini-btn" id="clearAll">Clear all plates</button>
+        <button type="button" class="mini-btn" id="clearAll">Clear painted</button>
       </div>
       <div class="panel-bd">
         <div class="paint-bar">
@@ -123,16 +123,22 @@
           <span class="k"><span class="dot q"></span> QC</span>
           <span class="k" style="color:var(--ink-faint)">6 slots = Evosep racks S1–S6</span>
         </div>
+        <div class="add-bar">
+          <button type="button" class="btn" id="addBtn">➕ Add to queue</button>
+          <span class="add-info" id="stagedInfo"></span>
+        </div>
       </div>
     </div>
 
     <div class="panel">
       <div class="panel-hd">
         <h2>Queue preview</h2>
+        <button type="button" class="mini-btn" id="removeLastBtn">Remove last batch</button>
+        <button type="button" class="mini-btn" id="clearQueueBtn">Clear queue</button>
         <div class="spacer"></div>
         <div class="stats" id="stats"></div>
       </div>
-      <div class="bracket-note" id="bracketNote">First CSV row: <b>Bracket Type=4</b></div>
+      <div class="bracket-note" id="bracketNote">First CSV row: <b>Bracket Type=4,</b></div>
       <div class="tbl-wrap"><table class="q" id="qtable"></table></div>
     </div>
 

@@ -9,6 +9,10 @@ generated queue, and export a ready-to-import CSV.
 
 - Six plate slots = Evosep racks **S1–S6**; queue combines all of them.
 - Per-well painting (sample / blank / QC) plus row, column, and whole-plate fill.
+- **Batch workflow:** paint a set of wells, pick its method, click **Add to queue**;
+  repeat with a different method. One queue can mix multiple MS methods — each run
+  carries the method of the batch it was added in. Remove the last batch or clear the
+  whole queue at any time.
 - Fixed sample-name identifiers: **`SA`** for samples & blanks, **`ADIAMA`** for QCs.
 - Queue follows the **order you click wells** (across all racks and all types).
 - Randomization: **off** (keep click order), **within each slot**, or **across all slots**
