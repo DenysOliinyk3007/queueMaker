@@ -20,8 +20,9 @@ https://<your-username>.github.io/queueMaker/
 - Six plate slots = Evosep racks **S1–S6**; queue combines all of them.
 - Per-well painting (sample / blank / QC) plus row, column, and whole-plate fill.
 - Fixed sample-name identifiers: **`SA`** for samples & blanks, **`ADIAMA`** for QCs.
-- Randomization: **off**, **within each slot**, or **across all slots** — samples only;
-  blanks and QCs keep the order you paint them.
+- Queue follows the **order you click wells** (across all racks and all types).
+- Randomization: **off** (keep click order), **within each slot**, or **across all slots**
+  — samples only; blanks and QCs always stay where you placed them.
 - Live CSV preview and export. In Chrome/Edge the **Download** button opens a native
   "Save As" dialog; other browsers save to the Downloads folder.
 - Remembers your instrument/naming/method settings between visits (localStorage);
