@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Queue Maker — MS Acquisition Queue Builder</title>
+  <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app">
+  <div class="brand">
+    <div class="glyph" aria-hidden="true"></div>
+    <div>
+      <h1>Queue Maker</h1>
+      <div class="sub">Evosep MS acquisition queue builder · up to 6 plates · Thermo &amp; Sciex</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button class="theme-btn" id="themeBtn" type="button">Toggle theme</button>
+</header>
+
+<main>
+  <!-- ====================== CONFIG RAIL ====================== -->
+  <form class="rail" id="cfg" autocomplete="off">
+    <fieldset>
+      <legend>Instrument</legend>
+      <div class="seg" id="instSeg">
+        <button type="button" data-inst="Thermo" aria-pressed="true">Thermo</button>
+        <button type="button" data-inst="Sciex" aria-pressed="false">Sciex</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Sample naming</legend>
+      <div class="field row">
+        <div><label class="lab" for="instName">Instrument ID</label><input type="text" id="instName" placeholder="OA"></div>
+        <div><label class="lab" for="instNo">Instrument no.</label><input type="text" id="instNo" placeholder="3"></div>
+      </div>
+      <div class="field row">
+        <div><label class="lab" for="evosepNo">Evosep no.</label><input type="text" id="evosepNo" placeholder="12"></div>
+        <div><label class="lab" for="gradientID">Gradient</label><input type="text" id="gradientID" placeholder="Whisper80"></div>
+      </div>
+      <div class="field row">
+        <div><label class="lab" for="personalID">Personal ID</label><input type="text" id="personalID" placeholder="DeOl"></div>
+        <div><label class="lab" for="dateID">Date (YYYYMMDD)</label><input type="text" id="dateID"></div>
+      </div>
+      <div class="field">
+        <label class="lab" for="expID">Experiment ID</label><input type="text" id="expID" placeholder="Exp01">
+        <div class="hint">Fixed tags follow the gradient (<b>SA</b> for samples/blanks, <b>ADIAMA</b> for QCs); the plate label is appended → <span style="font-family:var(--mono)">…_Whisper80_SA_DeOl_Exp01_plate1_A1</span></div>
+      </div>
+      <div class="namebox" id="namePreview"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Methods</legend>
+      <div class="field">
+        <label class="lab" for="MSmethod">MS method</label>
+        <input type="text" id="MSmethod" placeholder="WhisperZoom_16p3min_FAIMS-38_Phospho">
+      </div>
+      <div class="field" id="thermoMethodField">
+        <label class="lab" for="ThermoMethodPath">Instrument method path (Thermo)</label>
+        <input type="text" id="ThermoMethodPath" placeholder="C:\Xcalibur\methods\ENO\Tune2\Denys\">
+      </div>
+      <div class="field collapsed" id="lcMethodField">
+        <label class="lab" for="LCmethod">LC method (Sciex)</label>
+        <input type="text" id="LCmethod" placeholder="LC_method">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Randomization</legend>
+      <div class="radio-row" id="randomRadios">
+        <label class="radio-opt" data-on="true">
+          <input type="radio" name="rnd" value="off" checked>
+          <span><span class="rt">Off</span><br><span class="rd">keep the order you painted</span></span>
+        </label>
+        <label class="radio-opt" data-on="false">
+          <input type="radio" name="rnd" value="slot">
+          <span><span class="rt">Within each slot</span><br><span class="rd">shuffle samples per plate; slot order kept</span></span>
+        </label>
+        <label class="radio-opt" data-on="false">
+          <input type="radio" name="rnd" value="full">
+          <span><span class="rt">Across all slots</span><br><span class="rd">shuffle all samples together</span></span>
+        </label>
+      </div>
+      <div class="hint">Only samples move. Blanks &amp; QCs stay in the order you paint them.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Output</legend>
+      <div class="field"><label class="lab" for="output_name">File name</label><input type="text" id="output_name" value="queue.csv"></div>
+    </fieldset>
+  </form>
+
+  <!-- ====================== STAGE ====================== -->
+  <div class="stage">
+    <div class="panel">
+      <div class="panel-hd">
+        <h2>Plate selection</h2>
+        <div class="spacer"></div>
+        <button type="button" class="mini-btn" id="clearAll">Clear all plates</button>
+      </div>
+      <div class="panel-bd">
+        <div class="paint-bar">
+          <div class="seg paint" id="paintSeg">
+            <button type="button" data-paint="sample" aria-pressed="true"><i class="pdot" style="background:var(--sample)"></i>Sample</button>
+            <button type="button" data-paint="blank" aria-pressed="false"><i class="pdot" style="background:var(--blank)"></i>Blank</button>
+            <button type="button" data-paint="qc" aria-pressed="false"><i class="pdot" style="background:var(--qc)"></i>QC</button>
+          </div>
+          <span class="instructions">Click a well to paint. Click a row/column header to fill the line; the ⛶ corner fills/clears the plate.</span>
+        </div>
+        <div class="rack-sheet">
+          <div class="rack-grid" id="rackGrid"></div>
+        </div>
+        <div class="legend-key">
+          <span class="k"><span class="dot s"></span> Sample</span>
+          <span class="k"><span class="dot b"></span> Blank</span>
+          <span class="k"><span class="dot q"></span> QC</span>
+          <span class="k" style="color:var(--ink-faint)">6 slots = Evosep racks S1–S6</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hd">
+        <h2>Queue preview</h2>
+        <div class="spacer"></div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="bracket-note" id="bracketNote">First CSV row: <b>Bracket Type=4</b></div>
+      <div class="tbl-wrap"><table class="q" id="qtable"></table></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-bd">
+        <div class="export-bar">
+          <button type="button" class="btn" id="downloadBtn">⤓ Download CSV</button>
+          <button type="button" class="btn ghost" id="copyBtn">Copy to clipboard</button>
+          <span class="filename-preview" id="fnamePrev"></span>
+          <span class="spacer" style="flex:1"></span>
+          <span class="toast" id="toast">Copied ✓</span>
+        </div>
+        <div class="hint" id="saveTip">In Chrome or Edge, <b>Download CSV</b> opens a “Save As” dialog so you can choose the location. Other browsers save straight to your Downloads folder.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>
