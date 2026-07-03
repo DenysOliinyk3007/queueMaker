@@ -37,20 +37,20 @@
     <fieldset>
       <legend>Sample naming</legend>
       <div class="field row">
-        <div><label class="lab" for="instName">Instrument ID</label><input type="text" id="instName" placeholder="OA"></div>
-        <div><label class="lab" for="instNo">Instrument no.</label><input type="text" id="instNo" placeholder="3"></div>
+        <div><label class="lab" for="instName">Instrument ID</label><input type="text" id="instName" placeholder="instrument"></div>
+        <div><label class="lab" for="instNo">Instrument no.</label><input type="text" id="instNo" placeholder="1"></div>
       </div>
       <div class="field row">
-        <div><label class="lab" for="evosepNo">Evosep no.</label><input type="text" id="evosepNo" placeholder="12"></div>
-        <div><label class="lab" for="gradientID">Gradient</label><input type="text" id="gradientID" placeholder="Whisper80"></div>
+        <div><label class="lab" for="evosepNo">Evosep no.</label><input type="text" id="evosepNo" placeholder="1"></div>
+        <div><label class="lab" for="gradientID">Gradient</label><input type="text" id="gradientID" placeholder="gradient"></div>
       </div>
       <div class="field row">
-        <div><label class="lab" for="personalID">Personal ID</label><input type="text" id="personalID" placeholder="DeOl"></div>
+        <div><label class="lab" for="personalID">Personal ID</label><input type="text" id="personalID" placeholder="name-surname"></div>
         <div><label class="lab" for="dateID">Date (YYYYMMDD)</label><input type="text" id="dateID"></div>
       </div>
       <div class="field">
-        <label class="lab" for="expID">Experiment ID</label><input type="text" id="expID" placeholder="Exp01">
-        <div class="hint">Fixed tags follow the gradient (<b>SA</b> for samples/blanks, <b>ADIAMA</b> for QCs); the plate label is appended → <span style="font-family:var(--mono)">…_Whisper80_SA_DeOl_Exp01_plate1_A1</span></div>
+        <label class="lab" for="expID">Experiment ID</label><input type="text" id="expID" placeholder="experiment">
+        <div class="hint">Fixed tags follow the gradient (<b>SA</b> for samples/blanks, <b>ADIAMA</b> for QCs); the plate label is appended → <span style="font-family:var(--mono)">…_gradient_SA_name-surname_experiment_plate1_A1</span></div>
       </div>
       <div class="namebox" id="namePreview"></div>
     </fieldset>
@@ -59,15 +59,15 @@
       <legend>Methods</legend>
       <div class="field">
         <label class="lab" for="MSmethod">MS method</label>
-        <input type="text" id="MSmethod" placeholder="WhisperZoom_16p3min_FAIMS-38_Phospho">
+        <input type="text" id="MSmethod" placeholder="method-of-choice">
       </div>
       <div class="field" id="thermoMethodField">
         <label class="lab" for="ThermoMethodPath">Instrument method path (Thermo)</label>
-        <input type="text" id="ThermoMethodPath" placeholder="C:\Xcalibur\methods\ENO\Tune2\Denys\">
+        <input type="text" id="ThermoMethodPath" placeholder="C:\Xcalibur\methods\your_folder\">
       </div>
       <div class="field collapsed" id="lcMethodField">
         <label class="lab" for="LCmethod">LC method (Sciex)</label>
-        <input type="text" id="LCmethod" placeholder="LC_method">
+        <input type="text" id="LCmethod" placeholder="LC-method-of-choice">
       </div>
     </fieldset>
 

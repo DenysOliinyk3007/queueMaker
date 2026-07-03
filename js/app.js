@@ -7,6 +7,10 @@ const SAMPLE_TAG = 'SA';       // fixed identifier for samples & blanks
 const QC_TAG = 'ADIAMA';       // fixed identifier for QCs
 const $ = id => document.getElementById(id);
 
+// which text fields are remembered between visits (date is intentionally excluded — it resets to today)
+const STORE_KEY = 'queueMaker.settings.v1';
+const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','output_name'];
+
 /* ---------- state (starts empty) ---------- */
 const state = {
   inst: 'Thermo',
@@ -32,6 +36,27 @@ function cfg() {
     random: document.querySelector('input[name="rnd"]:checked').value,   // 'off' | 'slot' | 'full'
     outputName: ($('output_name').value.trim() || 'queue.csv'),
   };
+}
+
+/* ---------- persistence (localStorage) ---------- */
+function saveSettings() {
+  try {
+    const data = { inst: state.inst, random: document.querySelector('input[name="rnd"]:checked').value, fields: {} };
+    PERSIST_FIELDS.forEach(id => { data.fields[id] = $(id).value; });
+    localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  } catch (e) { /* storage unavailable (private mode / file://) — silently skip */ }
+}
+function loadSettings() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return; }
+  if (!data) return;
+  if (data.fields) PERSIST_FIELDS.forEach(id => { if (data.fields[id] != null) $(id).value = data.fields[id]; });
+  setInstrument(data.inst === 'Sciex' ? 'Sciex' : 'Thermo');
+  if (data.random) {
+    const r = document.querySelector(`input[name="rnd"][value="${data.random}"]`);
+    if (r) r.checked = true;
+  }
+  syncRandomUI();
 }
 
 /* ---------- naming ---------- */
@@ -189,13 +214,16 @@ function updatePreviewOnly() {
 function refresh() { renderPlates(); updatePreviewOnly(); }
 
 /* ---------- interactions ---------- */
+function setInstrument(inst) {
+  state.inst = inst;
+  document.querySelectorAll('#instSeg button').forEach(x => x.setAttribute('aria-pressed', x.dataset.inst === inst));
+  $('thermoMethodField').classList.toggle('collapsed', inst !== 'Thermo');
+  $('lcMethodField').classList.toggle('collapsed', inst !== 'Sciex');
+}
 $('instSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-inst]'); if (!b) return;
-  state.inst = b.dataset.inst;
-  document.querySelectorAll('#instSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
-  $('thermoMethodField').classList.toggle('collapsed', state.inst !== 'Thermo');
-  $('lcMethodField').classList.toggle('collapsed', state.inst !== 'Sciex');
-  updatePreviewOnly();
+  setInstrument(b.dataset.inst);
+  updatePreviewOnly(); saveSettings();
 });
 $('paintSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-paint]'); if (!b) return;
@@ -227,11 +255,11 @@ $('rackGrid').addEventListener('input', e => {
 
 $('clearAll').addEventListener('click', () => { state.plates.forEach(m => m.clear()); refresh(); });
 
-$('randomRadios').addEventListener('change', () => {
+function syncRandomUI() {
   document.querySelectorAll('#randomRadios .radio-opt').forEach(o => o.dataset.on = o.querySelector('input').checked);
-  updatePreviewOnly();
-});
-$('cfg').addEventListener('input', updatePreviewOnly);
+}
+$('randomRadios').addEventListener('change', () => { syncRandomUI(); updatePreviewOnly(); saveSettings(); });
+$('cfg').addEventListener('input', () => { updatePreviewOnly(); saveSettings(); });
 
 async function saveCSV() {
   const name = cfg().outputName.endsWith('.csv') ? cfg().outputName : cfg().outputName + '.csv';
@@ -271,4 +299,5 @@ $('themeBtn').addEventListener('click', () => {
   document.documentElement.setAttribute('data-theme', next);
 });
 
+loadSettings();   // restore the user's previous inputs (if any) before first render
 refresh();
