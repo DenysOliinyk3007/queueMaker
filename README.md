@@ -14,6 +14,8 @@ generated queue, and export a ready-to-import CSV.
   blanks and QCs keep the order you paint them.
 - Live CSV preview and export. In Chrome/Edge the **Download** button opens a native
   "Save As" dialog; other browsers save to the Downloads folder.
+- Remembers your instrument/naming/method settings between visits (localStorage);
+  the date always resets to today.
 - Light/dark theme.
 
 ## Project structure
