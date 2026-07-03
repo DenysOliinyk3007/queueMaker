@@ -18,6 +18,7 @@ const state = {
   plates: Array.from({length: NSLOTS}, () => new Map()),  // wellId -> { type, seq }
   labels: ['plate1','plate2','plate3','plate4','plate5','plate6'],
   seq: 0,                                                 // monotonic click counter (acquisition order)
+  batches: [],                                            // committed queue: [{ cfg, items:[{type,rack,well,label}] }]
 };
 
 /* ---------- date default ---------- */
@@ -94,50 +95,50 @@ function shuffleSamplesFixed(seq, perSlot) {
   return out;
 }
 
-/* ---------- build queue across all 6 slots ---------- */
-function buildQueue(c) {
-  const columns = c.inst === 'Thermo'
+// one CSV row for the active instrument, using the batch's own captured config
+function mkRow(cfg, inst, name, rack, well) {
+  return inst === 'Thermo'
+    ? [name, 'D:\\', instMethod(cfg), `S${rack}:${well}`]
+    : [name, cfg.MSmethod, cfg.LCmethod, 'Evosep One tray', `S${rack}`, '96 Evotip box', 'Default', well, name];
+}
+
+/* ---------- build queue from the committed batches ---------- */
+function buildQueue() {
+  const inst = state.inst;
+  const columns = inst === 'Thermo'
     ? ['File Name','Path','Instrument Method','Position']
     : ['Sample Name','MS Method','LC Method','Rack Type','Rack Position','Plate Type','Plate Position','Vial Position','Data File'];
-  const mkRow = (name, rack, well) => c.inst === 'Thermo'
-    ? [name, 'D:\\', instMethod(c), `S${rack}:${well}`]
-    : [name, c.MSmethod, c.LCmethod, 'Evosep One tray', `S${rack}`, '96 Evotip box', 'Default', well, name];
 
-  let sampleCount = 0, qcCount = 0, blankCount = 0, platesUsed = 0;
-  // every painted well across all slots, in the global order they were clicked
-  const items = [];
-  state.plates.forEach((wells, i) => {
-    if (wells.size === 0) return;
-    platesUsed++;
-    const rack = i + 1, label = state.labels[i];
-    for (const [well, cell] of wells) {
-      if (cell.type === 'sample') sampleCount++; else if (cell.type === 'qc') qcCount++; else blankCount++;
-      items.push({ type: cell.type, seq: cell.seq, rack, well, label });
-    }
-  });
-  items.sort((a, b) => a.seq - b.seq);   // preserve click order across all types & plates
+  let sampleCount = 0, qcCount = 0, blankCount = 0;
+  const racks = new Set();
+  const items = [];   // flatten batches in add order; each item carries its batch's cfg
+  state.batches.forEach(b => b.items.forEach(it => {
+    if (it.type === 'sample') sampleCount++; else if (it.type === 'qc') qcCount++; else blankCount++;
+    racks.add(it.rack);
+    items.push({ ...it, cfg: b.cfg });
+  }));
 
-  let sequence;
-  if (c.random === 'slot')      sequence = shuffleSamplesFixed(items, true);
-  else if (c.random === 'full') sequence = shuffleSamplesFixed(items, false);
-  else                          sequence = items;
+  const rnd = document.querySelector('input[name="rnd"]:checked').value;
+  const sequence = rnd === 'slot' ? shuffleSamplesFixed(items, true)
+                : rnd === 'full' ? shuffleSamplesFixed(items, false)
+                :                  items;
 
   let blankSeq = 0;
   const rows = sequence.map(it => {
-    const name = it.type === 'blank' ? blankName(c, it.label, blankSeq++)
-              : it.type === 'qc'    ? qcName(c, it.label, it.well)
-              :                       sampleName(c, it.label, it.well);
-    return { cells: mkRow(name, it.rack, it.well), type: it.type };
+    const name = it.type === 'blank' ? blankName(it.cfg, it.label, blankSeq++)
+              : it.type === 'qc'    ? qcName(it.cfg, it.label, it.well)
+              :                       sampleName(it.cfg, it.label, it.well);
+    return { cells: mkRow(it.cfg, inst, name, it.rack, it.well), type: it.type };
   });
 
-  return { columns, rows, sampleCount, qcCount, blankCount, platesUsed };
+  return { columns, rows, sampleCount, qcCount, blankCount, platesUsed: racks.size, batchCount: state.batches.length };
 }
 
 /* ---------- CSV ---------- */
 function csvCell(v) { const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
-function toCSV(c, q) {
+function toCSV(q) {
   const lines = [];
-  if (c.inst === 'Thermo') lines.push('Bracket Type=4');
+  if (state.inst === 'Thermo') lines.push('Bracket Type=4,');   // Xcalibur requires the trailing comma
   lines.push(q.columns.map(csvCell).join(','));
   for (const r of q.rows) lines.push(r.cells.map(csvCell).join(','));
   return lines.join('\r\n') + '\r\n';
@@ -194,12 +195,13 @@ function renderTable(q) {
     for (const cell of r.cells) html += `<td>${escapeHtml(cell)}</td>`;
     html += '</tr>';
   });
-  if (q.rows.length === 0) html += `<tr><td colspan="${q.columns.length + 1}" style="color:var(--ink-faint);padding:22px 12px;">Empty queue — pick a category above and click wells on a plate to begin.</td></tr>`;
+  if (q.rows.length === 0) html += `<tr><td colspan="${q.columns.length + 1}" style="color:var(--ink-faint);padding:22px 12px;">Queue is empty — paint wells on the plates, then click <b>Add to queue</b>.</td></tr>`;
   html += '</tbody>';
   t.innerHTML = html;
 }
 function renderStats(q) {
   $('stats').innerHTML = `
+    <div class="stat"><div class="n">${q.batchCount}</div><div class="l">Batches</div></div>
     <div class="stat"><div class="n">${q.platesUsed}</div><div class="l">Plates</div></div>
     <div class="stat samples"><div class="n">${q.sampleCount}</div><div class="l">Samples</div></div>
     <div class="stat qcs"><div class="n">${q.qcCount}</div><div class="l">QCs</div></div>
@@ -207,11 +209,18 @@ function renderStats(q) {
     <div class="stat"><div class="n">${q.rows.length}</div><div class="l">Total runs</div></div>`;
 }
 
+// counts of wells painted but not yet added to the queue
+function stagedCounts() {
+  let ns = 0, nq = 0, nb = 0;
+  state.plates.forEach(w => w.forEach(v => v.type === 'blank' ? nb++ : v.type === 'qc' ? nq++ : ns++));
+  return { ns, nq, nb, total: ns + nq + nb };
+}
+
 let currentCSV = '';
 function updatePreviewOnly() {
   const c = cfg();
-  const q = buildQueue(c);
-  currentCSV = toCSV(c, q);
+  const q = buildQueue();
+  currentCSV = toCSV(q);
   renderTable(q); renderStats(q);
   $('namePreview').innerHTML = 'e.g. <b>' + escapeHtml(sampleName(c, state.labels[0], 'A1')) + '</b>';
   $('methodPreview').innerHTML = c.inst === 'Thermo'
@@ -219,10 +228,43 @@ function updatePreviewOnly() {
     : 'MS Method → <b>' + escapeHtml(c.MSmethod) + '</b> · LC Method → <b>' + escapeHtml(c.LCmethod) + '</b>';
   $('bracketNote').style.display = c.inst === 'Thermo' ? '' : 'none';
   $('fnamePrev').textContent = c.outputName;
-  $('downloadBtn').disabled = q.rows.length === 0;
-  $('copyBtn').disabled = q.rows.length === 0;
+
+  // staged (painted-but-not-yet-added) summary + which method the next Add will use
+  const s = stagedCounts();
+  const parts = [];
+  if (s.ns) parts.push(`${s.ns} sample${s.ns > 1 ? 's' : ''}`);
+  if (s.nq) parts.push(`${s.nq} QC`);
+  if (s.nb) parts.push(`${s.nb} blank${s.nb > 1 ? 's' : ''}`);
+  $('stagedInfo').innerHTML = s.total
+    ? `<b>${s.total}</b> painted (${parts.join(' · ')}) → will use method <b>${escapeHtml(c.MSmethod)}</b>`
+    : 'Nothing painted yet — paint wells, then click Add.';
+  $('addBtn').disabled = !s.total;
+
+  const empty = q.rows.length === 0;
+  $('downloadBtn').disabled = empty;
+  $('copyBtn').disabled = empty;
+  $('clearQueueBtn').disabled = empty;
+  $('removeLastBtn').disabled = state.batches.length === 0;
 }
 function refresh() { renderPlates(); updatePreviewOnly(); }
+
+/* ---------- committed queue actions ---------- */
+function addToQueue() {
+  const items = [];
+  state.plates.forEach((wells, i) => {
+    const rack = i + 1, label = state.labels[i];
+    for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label });
+  });
+  if (!items.length) { flash('Paint some wells first'); return; }
+  items.sort((a, b) => a.seq - b.seq);   // click order within this batch
+  const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label }) => ({ type, rack, well, label })) };
+  state.batches.push(batch);
+  state.plates.forEach(m => m.clear());   // clear staging for the next set
+  refresh();
+  flash(`Added ${batch.items.length} run${batch.items.length > 1 ? 's' : ''} to queue`);
+}
+function removeLastBatch() { if (state.batches.length) { state.batches.pop(); refresh(); } }
+function clearQueue() { if (state.batches.length) { state.batches = []; refresh(); } }
 
 /* ---------- interactions ---------- */
 function setInstrument(inst) {
@@ -267,6 +309,9 @@ $('rackGrid').addEventListener('input', e => {
 });
 
 $('clearAll').addEventListener('click', () => { state.plates.forEach(m => m.clear()); refresh(); });
+$('addBtn').addEventListener('click', addToQueue);
+$('removeLastBtn').addEventListener('click', removeLastBatch);
+$('clearQueueBtn').addEventListener('click', clearQueue);
 
 function syncRandomUI() {
   document.querySelectorAll('#randomRadios .radio-opt').forEach(o => o.dataset.on = o.querySelector('input').checked);
