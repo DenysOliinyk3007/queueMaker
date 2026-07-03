@@ -69,6 +69,7 @@
         <label class="lab" for="LCmethod">LC method (Sciex)</label>
         <input type="text" id="LCmethod" placeholder="LC-method-of-choice">
       </div>
+      <div class="namebox" id="methodPreview" style="word-break:break-all;"></div>
     </fieldset>
 
     <fieldset>
@@ -80,7 +81,7 @@
         </label>
         <label class="radio-opt" data-on="false">
           <input type="radio" name="rnd" value="slot">
-          <span><span class="rt">Within each slot</span><br><span class="rd">shuffle samples per plate; slot order kept</span></span>
+          <span><span class="rt">Within each slot</span><br><span class="rd">shuffle samples within each plate; blanks/QCs stay put</span></span>
         </label>
         <label class="radio-opt" data-on="false">
           <input type="radio" name="rnd" value="full">

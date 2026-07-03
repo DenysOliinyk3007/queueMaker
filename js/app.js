@@ -15,8 +15,9 @@ const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID'
 const state = {
   inst: 'Thermo',
   paint: 'sample',                                        // 'sample' | 'blank' | 'qc'
-  plates: Array.from({length: NSLOTS}, () => new Map()),  // wellId -> type
+  plates: Array.from({length: NSLOTS}, () => new Map()),  // wellId -> { type, seq }
   labels: ['plate1','plate2','plate3','plate4','plate5','plate6'],
+  seq: 0,                                                 // monotonic click counter (acquisition order)
 };
 
 /* ---------- date default ---------- */
@@ -61,27 +62,35 @@ function loadSettings() {
 
 /* ---------- naming ---------- */
 function fullExp(c, label) { return label ? `${c.expID}_${label}` : c.expID; }
+// Thermo instrument method = method folder + method name, joined with exactly one backslash
+function instMethod(c) {
+  const folder = (c.thermoPath || '').replace(/[\\/]+$/, '');   // drop any trailing slash(es)
+  return folder ? `${folder}\\${c.MSmethod}` : c.MSmethod;
+}
 function prefix(c, label, tag) { return `${c.dateID}_${c.instName}${c.instNo}_Evo${c.evosepNo}_${c.gradientID}_${tag}_${c.personalID}_${fullExp(c, label)}`; }
 function sampleName(c, label, well) { return `${prefix(c, label, SAMPLE_TAG)}_${well}`; }
 function qcName(c, label, well)     { return `${prefix(c, label, QC_TAG)}_QC_${well}`; }
 function blankName(c, label, n)     { return `${prefix(c, label, SAMPLE_TAG)}_blank_${n}`; }
 
-/* reading order: across rows (A1,A2,…,A12,B1,…) */
-function orderReading(ids) {
-  return ids.slice().sort((a, b) => {
-    const ra = ROWS.indexOf(a[0]), rb = ROWS.indexOf(b[0]);
-    return ra - rb || parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10);
-  });
-}
 function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-/* shuffle only 'sample' items among their own positions; blanks/QCs stay fixed */
-function shuffleSamplesFixed(seq) {
-  const idx = [], samples = [];
-  seq.forEach((it, i) => { if (it.type === 'sample') { idx.push(i); samples.push(it); } });
-  const shuffled = shuffle(samples);
+/* shuffle only 'sample' items among their own positions; blanks/QCs stay put.
+   perSlot=true shuffles each plate's samples within that plate's own sample positions. */
+function shuffleSamplesFixed(seq, perSlot) {
   const out = seq.slice();
-  idx.forEach((position, k) => out[position] = shuffled[k]);
+  const shuffleGroup = indices => {
+    const picked = shuffle(indices.map(i => seq[i]));
+    indices.forEach((pos, k) => out[pos] = picked[k]);
+  };
+  if (perSlot) {
+    const groups = {};
+    seq.forEach((it, i) => { if (it.type === 'sample') (groups[it.rack] = groups[it.rack] || []).push(i); });
+    Object.values(groups).forEach(shuffleGroup);
+  } else {
+    const idx = [];
+    seq.forEach((it, i) => { if (it.type === 'sample') idx.push(i); });
+    shuffleGroup(idx);
+  }
   return out;
 }
 
@@ -91,28 +100,27 @@ function buildQueue(c) {
     ? ['File Name','Path','Instrument Method','Position']
     : ['Sample Name','MS Method','LC Method','Rack Type','Rack Position','Plate Type','Plate Position','Vial Position','Data File'];
   const mkRow = (name, rack, well) => c.inst === 'Thermo'
-    ? [name, 'D:\\', c.thermoPath + c.MSmethod, `S${rack}:${well}`]
+    ? [name, 'D:\\', instMethod(c), `S${rack}:${well}`]
     : [name, c.MSmethod, c.LCmethod, 'Evosep One tray', `S${rack}`, '96 Evotip box', 'Default', well, name];
 
   let sampleCount = 0, qcCount = 0, blankCount = 0, platesUsed = 0;
-  const slotSeqs = [];   // one reading-order sequence per used slot, in S1..S6 order
-
+  // every painted well across all slots, in the global order they were clicked
+  const items = [];
   state.plates.forEach((wells, i) => {
     if (wells.size === 0) return;
     platesUsed++;
     const rack = i + 1, label = state.labels[i];
-    const seq = orderReading([...wells.keys()]).map(well => {
-      const type = wells.get(well);
-      if (type === 'sample') sampleCount++; else if (type === 'qc') qcCount++; else blankCount++;
-      return { type, rack, well, label };
-    });
-    slotSeqs.push(seq);
+    for (const [well, cell] of wells) {
+      if (cell.type === 'sample') sampleCount++; else if (cell.type === 'qc') qcCount++; else blankCount++;
+      items.push({ type: cell.type, seq: cell.seq, rack, well, label });
+    }
   });
+  items.sort((a, b) => a.seq - b.seq);   // preserve click order across all types & plates
 
   let sequence;
-  if (c.random === 'slot')      sequence = slotSeqs.map(shuffleSamplesFixed).flat();
-  else if (c.random === 'full') sequence = shuffleSamplesFixed(slotSeqs.flat());
-  else                          sequence = slotSeqs.flat();
+  if (c.random === 'slot')      sequence = shuffleSamplesFixed(items, true);
+  else if (c.random === 'full') sequence = shuffleSamplesFixed(items, false);
+  else                          sequence = items;
 
   let blankSeq = 0;
   const rows = sequence.map(it => {
@@ -139,7 +147,7 @@ function toCSV(c, q) {
 function slotHTML(i) {
   const wells = state.plates[i];
   let ns = 0, nq = 0, nb = 0;
-  for (const v of wells.values()) v === 'blank' ? nb++ : v === 'qc' ? nq++ : ns++;
+  for (const v of wells.values()) v.type === 'blank' ? nb++ : v.type === 'qc' ? nq++ : ns++;
   const active = wells.size > 0;
 
   let grid = '<table class="mp"><thead><tr><th><div class="corner" data-plate="'+i+'" data-corner="1" title="Fill / clear plate"></div></th>';
@@ -148,7 +156,7 @@ function slotHTML(i) {
   for (const row of ROWS) {
     grid += `<tr><th><div class="hrow" data-plate="${i}" data-row="${row}">${row}</div></th>`;
     for (const col of COLS) {
-      const id = row + col, type = wells.get(id);
+      const id = row + col, cell = wells.get(id), type = cell && cell.type;
       grid += `<td><div class="well${type ? ' ' + type : ''}" data-plate="${i}" data-well="${id}" title="${id}"></div></td>`;
     }
     grid += '</tr>';
@@ -206,6 +214,9 @@ function updatePreviewOnly() {
   currentCSV = toCSV(c, q);
   renderTable(q); renderStats(q);
   $('namePreview').innerHTML = 'e.g. <b>' + escapeHtml(sampleName(c, state.labels[0], 'A1')) + '</b>';
+  $('methodPreview').innerHTML = c.inst === 'Thermo'
+    ? 'Instrument Method → <b>' + escapeHtml(instMethod(c)) + '</b><br>must be an existing .meth on the acquisition PC, or Xcalibur leaves the column blank.'
+    : 'MS Method → <b>' + escapeHtml(c.MSmethod) + '</b> · LC Method → <b>' + escapeHtml(c.LCmethod) + '</b>';
   $('bracketNote').style.display = c.inst === 'Thermo' ? '' : 'none';
   $('fnamePrev').textContent = c.outputName;
   $('downloadBtn').disabled = q.rows.length === 0;
@@ -231,11 +242,13 @@ $('paintSeg').addEventListener('click', e => {
   document.querySelectorAll('#paintSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
 });
 
-function paintWell(map, id) { map.get(id) === state.paint ? map.delete(id) : map.set(id, state.paint); }
+// set a well's type; new wells get the next click number, re-painted wells keep their place
+function setWell(map, id, type) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq }); }
+function paintWell(map, id) { const cur = map.get(id); if (cur && cur.type === state.paint) map.delete(id); else setWell(map, id, state.paint); }
 function bulkPaint(map, ids) {
-  const allCurrent = ids.every(id => map.get(id) === state.paint);
+  const allCurrent = ids.every(id => { const c = map.get(id); return c && c.type === state.paint; });
   if (allCurrent) ids.forEach(id => map.delete(id));
-  else ids.forEach(id => map.set(id, state.paint));
+  else ids.forEach(id => setWell(map, id, state.paint));
 }
 $('rackGrid').addEventListener('click', e => {
   const el = e.target.closest('[data-plate]'); if (!el) return;
