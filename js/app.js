@@ -2,7 +2,13 @@
 
 const ROWS = ['A','B','C','D','E','F','G','H'];
 const COLS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-const NSLOTS = 6;
+// autosampler / LC configs: rack labels + Sciex rack/plate type strings
+const LC_CONFIG = {
+  Evosep:      { racks: ['S1','S2','S3','S4','S5','S6'], rackType: 'Evosep One tray',    plateType: '96 Evotip box' },
+  VanquishNeo: { racks: ['R','G','B','Y'],               rackType: 'Vanquish well plate', plateType: '96 well plate' },
+};
+const TRAY_NAME = { R: 'Red', G: 'Green', B: 'Blue', Y: 'Yellow' };
+const TRAY_COLOR = { R: '#d24b3e', G: '#2f9e5f', B: '#3576cc', Y: '#c99a1e' };
 const SAMPLE_TAG = 'SA';       // fixed identifier for samples & blanks
 const QC_TAG = 'ADIAMA';       // fixed identifier for QCs
 const $ = id => document.getElementById(id);
@@ -13,13 +19,15 @@ const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID'
 
 /* ---------- state (starts empty) ---------- */
 const state = {
-  inst: 'Thermo',
+  inst: 'Thermo',                                         // MS: 'Thermo' | 'Sciex'
+  lc: 'Evosep',                                           // autosampler: 'Evosep' | 'VanquishNeo'
   paint: 'sample',                                        // 'sample' | 'blank' | 'qc'
-  plates: Array.from({length: NSLOTS}, () => new Map()),  // wellId -> { type, seq }
+  plates: Array.from({ length: 6 }, () => new Map()),     // wellId -> { type, seq }; length tracks the LC's rack count
   labels: ['plate1','plate2','plate3','plate4','plate5','plate6'],
   seq: 0,                                                 // monotonic click counter (acquisition order)
   batches: [],                                            // committed queue: [{ cfg, items:[{type,rack,well,label}] }]
 };
+function racks() { return LC_CONFIG[state.lc].racks; }    // rack labels for the active LC
 
 /* ---------- date default ---------- */
 function todayStamp() { const d = new Date(); const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`; }
@@ -37,13 +45,14 @@ function cfg() {
     MSmethod: val('MSmethod'), LCmethod: val('LCmethod'), thermoPath: val('ThermoMethodPath'),
     random: document.querySelector('input[name="rnd"]:checked').value,   // 'off' | 'slot' | 'full'
     outputName: ($('output_name').value.trim() || 'queue.csv'),
+    lc: state.lc,
   };
 }
 
 /* ---------- persistence (localStorage) ---------- */
 function saveSettings() {
   try {
-    const data = { inst: state.inst, random: document.querySelector('input[name="rnd"]:checked').value, fields: {} };
+    const data = { inst: state.inst, lc: state.lc, random: document.querySelector('input[name="rnd"]:checked').value, fields: {} };
     PERSIST_FIELDS.forEach(id => { data.fields[id] = $(id).value; });
     localStorage.setItem(STORE_KEY, JSON.stringify(data));
   } catch (e) { /* storage unavailable (private mode / file://) — silently skip */ }
@@ -54,6 +63,7 @@ function loadSettings() {
   if (!data) return;
   if (data.fields) PERSIST_FIELDS.forEach(id => { if (data.fields[id] != null) $(id).value = data.fields[id]; });
   setInstrument(data.inst === 'Sciex' ? 'Sciex' : 'Thermo');
+  setLC(data.lc || 'Evosep');
   if (data.random) {
     const r = document.querySelector(`input[name="rnd"][value="${data.random}"]`);
     if (r) r.checked = true;
@@ -95,11 +105,13 @@ function shuffleSamplesFixed(seq, perSlot) {
   return out;
 }
 
-// one CSV row for the active instrument, using the batch's own captured config
+// one CSV row for the active instrument, using the batch's own captured config.
+// rack is the full rack label ("S1" for Evosep, "R"/"G"/"B"/"Y" for Vanquish Neo)
 function mkRow(cfg, inst, name, rack, well) {
+  const lcCfg = LC_CONFIG[cfg.lc] || LC_CONFIG.Evosep;
   return inst === 'Thermo'
-    ? [name, 'D:\\', instMethod(cfg), `S${rack}:${well}`]
-    : [name, cfg.MSmethod, cfg.LCmethod, 'Evosep One tray', `S${rack}`, '96 Evotip box', 'Default', well, name];
+    ? [name, 'D:\\', instMethod(cfg), `${rack}:${well}`]
+    : [name, cfg.MSmethod, cfg.LCmethod, lcCfg.rackType, `${rack}`, lcCfg.plateType, 'Default', well, name];
 }
 
 /* ---------- build queue from the committed batches ---------- */
@@ -110,11 +122,11 @@ function buildQueue() {
     : ['Sample Name','MS Method','LC Method','Rack Type','Rack Position','Plate Type','Plate Position','Vial Position','Data File'];
 
   let sampleCount = 0, qcCount = 0, blankCount = 0;
-  const racks = new Set();
+  const usedRacks = new Set();
   const items = [];   // flatten batches in add order; each item carries its batch's cfg
   state.batches.forEach(b => b.items.forEach(it => {
     if (it.type === 'sample') sampleCount++; else if (it.type === 'qc') qcCount++; else blankCount++;
-    racks.add(it.rack);
+    usedRacks.add(it.rack);
     items.push({ ...it, cfg: b.cfg });
   }));
 
@@ -131,7 +143,7 @@ function buildQueue() {
     return { cells: mkRow(it.cfg, inst, name, it.rack, it.well), type: it.type };
   });
 
-  return { columns, rows, sampleCount, qcCount, blankCount, platesUsed: racks.size, batchCount: state.batches.length };
+  return { columns, rows, sampleCount, qcCount, blankCount, platesUsed: usedRacks.size, batchCount: state.batches.length };
 }
 
 /* ---------- CSV ---------- */
@@ -170,16 +182,25 @@ function slotHTML(i) {
   if (nb) parts.push(`<b class="b">${nb}</b> blank${nb > 1 ? 's' : ''}`);
   const foot = parts.length ? parts.join(' · ') : 'empty';
 
+  const rackId = racks()[i];
+  const col = TRAY_COLOR[rackId];
+  const badgeStyle = col ? ` style="background:${col}22;color:${col}"` : '';
+  const badgeTitle = TRAY_NAME[rackId] ? ` title="${TRAY_NAME[rackId]} tray"` : '';
+
   return `<div class="slot${active ? ' active' : ''}">
     <div class="slot-hd">
-      <span class="slot-rack">S${i+1}</span>
-      <input class="slot-label" type="text" data-label="${i}" value="${escapeAttr(state.labels[i])}" placeholder="label" aria-label="Plate ${i+1} label">
+      <span class="slot-rack"${badgeStyle}${badgeTitle}>${rackId}</span>
+      <input class="slot-label" type="text" data-label="${i}" value="${escapeAttr(state.labels[i])}" placeholder="label" aria-label="Rack ${rackId} label">
     </div>
     <div class="miniplate">${grid}</div>
     <div class="slot-foot">${foot}</div>
   </div>`;
 }
-function renderPlates() { $('rackGrid').innerHTML = state.plates.map((_, i) => slotHTML(i)).join(''); }
+function renderPlates() {
+  const n = racks().length;
+  $('rackGrid').style.gridTemplateRows = `repeat(${Math.ceil(n / 2)}, auto)`;
+  $('rackGrid').innerHTML = state.plates.map((_, i) => slotHTML(i)).join('');
+}
 function escapeAttr(s){ return String(s).replace(/[&"<>]/g, ch => ({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[ch])); }
 function escapeHtml(s){ return String(s).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch])); }
 
@@ -251,8 +272,9 @@ function refresh() { renderPlates(); updatePreviewOnly(); }
 /* ---------- committed queue actions ---------- */
 function addToQueue() {
   const items = [];
+  const rackLabels = racks();
   state.plates.forEach((wells, i) => {
-    const rack = i + 1, label = state.labels[i];
+    const rack = rackLabels[i], label = state.labels[i];
     for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label });
   });
   if (!items.length) { flash('Paint some wells first'); return; }
@@ -277,6 +299,22 @@ $('instSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-inst]'); if (!b) return;
   setInstrument(b.dataset.inst);
   updatePreviewOnly(); saveSettings();
+});
+function rebuildPlates() { state.plates = Array.from({ length: racks().length }, () => new Map()); }
+function setLC(lc) {
+  state.lc = LC_CONFIG[lc] ? lc : 'Evosep';
+  document.querySelectorAll('#lcSeg button').forEach(x => x.setAttribute('aria-pressed', x.dataset.lc === state.lc));
+  if (state.plates.length !== racks().length) rebuildPlates();   // resize staging to the LC's rack count
+}
+$('lcSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-lc]'); if (!b) return;
+  if (b.dataset.lc === state.lc) return;
+  // the autosampler applies to the whole queue — positions differ, so switching resets it
+  if (state.batches.length && !window.confirm('Switching the autosampler clears the current queue and painted wells (rack positions differ). Continue?')) return;
+  state.batches = [];
+  setLC(b.dataset.lc);
+  rebuildPlates();   // clears staged wells (rack counts differ)
+  refresh(); saveSettings();
 });
 $('paintSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-paint]'); if (!b) return;

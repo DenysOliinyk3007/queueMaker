@@ -7,7 +7,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=3">
 </head>
 <body>
 
@@ -16,7 +16,7 @@
     <div class="glyph" aria-hidden="true"></div>
     <div>
       <h1>Queue Maker</h1>
-      <div class="sub">Evosep MS acquisition queue builder · up to 6 plates · Thermo &amp; Sciex</div>
+      <div class="sub">MS acquisition queue builder · Evosep &amp; Vanquish Neo · Thermo &amp; Sciex</div>
     </div>
   </div>
   <div class="spacer"></div>
@@ -31,6 +31,14 @@
       <div class="seg" id="instSeg">
         <button type="button" data-inst="Thermo" aria-pressed="true">Thermo</button>
         <button type="button" data-inst="Sciex" aria-pressed="false">Sciex</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Autosampler / LC</legend>
+      <div class="seg" id="lcSeg">
+        <button type="button" data-lc="Evosep" aria-pressed="true">Evosep · S1–S6</button>
+        <button type="button" data-lc="VanquishNeo" aria-pressed="false">Vanquish Neo · R/G/B/Y</button>
       </div>
     </fieldset>
 
@@ -121,7 +129,7 @@
           <span class="k"><span class="dot s"></span> Sample</span>
           <span class="k"><span class="dot b"></span> Blank</span>
           <span class="k"><span class="dot q"></span> QC</span>
-          <span class="k" style="color:var(--ink-faint)">6 slots = Evosep racks S1–S6</span>
+          <span class="k" style="color:var(--ink-faint)">Each slot = one autosampler rack</span>
         </div>
         <div class="add-bar">
           <button type="button" class="btn" id="addBtn">➕ Add to queue</button>
@@ -157,6 +165,6 @@
   </div>
 </main>
 
-<script src="js/app.js"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>
