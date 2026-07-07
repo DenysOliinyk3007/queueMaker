@@ -1,9 +1,9 @@
 # Queue Maker
 
-Interactive builder for **Evosep** mass-spectrometry acquisition queues, for **Thermo**
-(Xcalibur) and **Sciex** instruments. Lay out up to six 96-well plates on a virtual
-Evosep rack (S1–S6), paint each well as **sample**, **blank**, or **QC**, preview the
-generated queue, and export a ready-to-import CSV.
+Interactive builder for mass-spectrometry acquisition queues, for **Thermo** (Xcalibur)
+and **Sciex** instruments, with **Evosep** or **Vanquish Neo** autosamplers. Lay out
+96-well plates on the virtual rack, paint each well as **sample**, **blank**, or **QC**,
+preview the generated queue, and export a ready-to-import CSV.
 
 Thermo exports begin with the required `Bracket Type=4` header row.
 
@@ -17,7 +17,9 @@ https://<your-username>.github.io/queueMaker/
 
 ## Features
 
-- Six plate slots = Evosep racks **S1–S6**; queue combines all of them.
+- Two autosamplers: **Evosep** (6 racks, `S1–S6`, positions like `S3:A1`) and
+  **Vanquish Neo** (4 colored trays `R/G/B/Y`, positions like `G:A1`). The queue combines
+  all racks of the selected autosampler.
 - Per-well painting (sample / blank / QC) plus row, column, and whole-plate fill.
 - **Batch workflow:** paint a set of wells, pick its method, click **Add to queue**;
   repeat with a different method. One queue can mix multiple MS methods — each run
