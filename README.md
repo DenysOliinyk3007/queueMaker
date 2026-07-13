@@ -28,7 +28,9 @@ https://<your-username>.github.io/queueMaker/
   whole queue at any time.
 - **Import a plate-layout CSV** (well grid of names, rows A–H × columns 1–12) into any
   rack: named wells are painted automatically, each name gets your standard prefix, and
-  blank/QC wells are detected by keyword.
+  blank/QC wells are detected by keyword. Comma/semicolon/tab delimiters and a UTF-8 BOM
+  are auto-handled; a name that repeats across wells is auto-numbered `_01`, `_02`, … so
+  every File Name stays unique.
 - Fixed sample-name identifiers: **`SA`** for samples & blanks, **`ADIAMA`** for QCs.
 - Queue follows the **order you click wells** (across all racks and all types).
 - Randomization: **off** (keep click order), **within each slot**, or **across all slots**
