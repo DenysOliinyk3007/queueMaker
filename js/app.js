@@ -274,6 +274,7 @@ function updatePreviewOnly() {
   $('copyBtn').disabled = empty;
   $('clearQueueBtn').disabled = empty;
   $('removeLastBtn').disabled = state.batches.length === 0;
+  $('moveHereBtn').disabled = lastImportSlot === null;
 }
 function refresh() { renderPlates(); updatePreviewOnly(); }
 
@@ -516,7 +517,7 @@ $('importFile').addEventListener('change', e => {
       const bits = [`${res.ns} samples`, res.nq && `${res.nq} QC`, res.nb && `${res.nb} blanks`].filter(Boolean).join(', ');
       const sep = res.delim === ';' ? ' · semicolon-separated' : res.delim === '\t' ? ' · tab-separated' : '';
       const numbered = res.numbered ? ` <b>${res.numbered}</b> repeated name${res.numbered > 1 ? 's' : ''} auto-numbered (_01, _02, …).` : '';
-      $('importInfo').innerHTML = `Imported <b>${res.n}</b> wells into <b>${racks()[slotIndex]}</b> (${bits})${sep}.${numbered} Change the rack to move it. Review, then Add to queue.`;
+      $('importInfo').innerHTML = `Imported <b>${res.n}</b> wells into <b>${racks()[slotIndex]}</b> (${bits})${sep}.${numbered} Wrong rack? Pick another and click “Move here”. Review, then Add to queue.`;
       lastImportSlot = slotIndex;
       refresh();
     }
@@ -524,17 +525,19 @@ $('importFile').addEventListener('change', e => {
   };
   reader.readAsText(file);
 });
-// changing the rack after an import (before adding) relocates the imported layout
-$('importRack').addEventListener('change', () => {
+// "Move here" relocates the most recent (not-yet-added) import to the selected rack
+$('moveHereBtn').addEventListener('click', () => {
+  if (lastImportSlot === null) return;
   const to = +$('importRack').value;
-  if (lastImportSlot === null || lastImportSlot === to) return;
+  if (to === lastImportSlot) { flash(`Layout already in ${racks()[to]}`); return; }
   const from = state.plates[lastImportSlot];
-  if (!from.size) { lastImportSlot = null; return; }
-  state.plates[to] = from;                 // move the wells to the newly-selected rack
+  if (!from.size) { lastImportSlot = null; refresh(); return; }
+  const fromLabel = racks()[lastImportSlot], toLabel = racks()[to];
+  state.plates[to] = from;                 // move the imported wells to the selected rack
   state.plates[lastImportSlot] = new Map();
   lastImportSlot = to;
   refresh();
-  $('importInfo').innerHTML = `Moved imported layout to <b>${racks()[to]}</b>. Review, then Add to queue.`;
+  $('importInfo').innerHTML = `Moved imported layout from <b>${fromLabel}</b> to <b>${toLabel}</b>. Review, then Add to queue.`;
 });
 
 function syncRandomUI() {
