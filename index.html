@@ -3,11 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- never cache the HTML, so a normal reload always fetches the current ?v= scripts -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Queue Maker — MS Acquisition Queue Builder</title>
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=11">
+  <link rel="stylesheet" href="css/styles.css?v=12">
 </head>
 <body>
 
@@ -172,6 +176,6 @@
   </div>
 </main>
 
-<script src="js/app.js?v=11"></script>
+<script src="js/app.js?v=12"></script>
 </body>
 </html>
