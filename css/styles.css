@@ -13,6 +13,7 @@
   --accent-ink:#c25e00;
   --accent-bg: #fbe3c9;
   --focus:     #ee7303;
+  --danger:    #d64a3f;   /* drag-to-erase ring */
   /* well / category colors */
   --sample:      #f1b073;  --sample-soft:#fbeedd; --sample-ink:#b85e06;
   --blank:       #9dc4e8;  --blank-soft: #e6f0fa; --blank-ink: #2d6ba6;
@@ -125,8 +126,11 @@ input::placeholder { color:var(--ink-faint); }
 .slot-foot b { font-weight:600; } .slot-foot b.s { color:var(--sample-ink); } .slot-foot b.q { color:var(--qc-ink); } .slot-foot b.b { color:var(--blank-ink); }
 
 .miniplate { overflow-x:auto; }
-table.mp { border-collapse:separate; border-spacing:4px; margin:0 auto; line-height:0; }
+table.mp { border-collapse:separate; border-spacing:4px; margin:0 auto; line-height:0; user-select:none; }
 table.mp th, table.mp td { padding:0; vertical-align:middle; text-align:center; }
+.mp .well { touch-action:none; }
+.mp .well.drag-paint { box-shadow: inset 0 0 0 2px var(--accent); }
+.mp .well.drag-erase { box-shadow: inset 0 0 0 2px var(--danger); }
 .mp .corner, .mp .hcol, .mp .hrow, .mp .well { border:1px solid var(--line); cursor:pointer; font-family:var(--mono); background:var(--surface); color:var(--ink-faint); display:inline-flex; align-items:center; justify-content:center; }
 .mp .hcol, .mp .hrow, .mp .corner { border-radius:5px; }
 .mp .hcol { width:26px; height:20px; font-size:9.5px; font-weight:600; }
