@@ -26,6 +26,9 @@ https://<your-username>.github.io/queueMaker/
   repeat with a different method. One queue can mix multiple MS methods — each run
   carries the method of the batch it was added in. Remove the last batch or clear the
   whole queue at any time.
+- **Import a plate-layout CSV** (well grid of names, rows A–H × columns 1–12) into any
+  rack: named wells are painted automatically, each name gets your standard prefix, and
+  blank/QC wells are detected by keyword.
 - Fixed sample-name identifiers: **`SA`** for samples & blanks, **`ADIAMA`** for QCs.
 - Queue follows the **order you click wells** (across all racks and all types).
 - Randomization: **off** (keep click order), **within each slot**, or **across all slots**
