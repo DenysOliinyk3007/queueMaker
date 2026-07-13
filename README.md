@@ -10,7 +10,8 @@ preview the generated queue, and export a ready-to-import CSV.
 - Two autosamplers: **Evosep** (6 racks, `S1–S6`, positions like `S3:A1`) and
   **Vanquish Neo** (4 colored trays `R/G/B/Y`, positions like `G:A1`). The queue combines
   all racks of the selected autosampler.
-- Per-well painting (sample / blank / QC) plus row, column, and whole-plate fill.
+- Per-well painting (sample / blank / QC): click a well, **drag to paint a rectangular
+  block** (drag from a same-type well to erase), or fill a row / column / whole plate.
 - **Batch workflow:** paint a set of wells, pick its method, click **Add to queue**;
   repeat with a different method. One queue can mix multiple MS methods — each run
   carries the method of the batch it was added in. Remove the last batch or clear the

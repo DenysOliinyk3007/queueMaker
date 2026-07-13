@@ -330,16 +330,75 @@ function bulkPaint(map, ids) {
   if (allCurrent) ids.forEach(id => map.delete(id));
   else ids.forEach(id => setWell(map, id, state.paint));
 }
+// row / column / corner header fills (wells themselves are handled by pointer drag below)
 $('rackGrid').addEventListener('click', e => {
   const el = e.target.closest('[data-plate]'); if (!el) return;
   const map = state.plates[+el.dataset.plate];
-  if (el.dataset.well) paintWell(map, el.dataset.well);
-  else if (el.dataset.row) bulkPaint(map, COLS.map(c => el.dataset.row + c));
+  if (el.dataset.row) bulkPaint(map, COLS.map(c => el.dataset.row + c));
   else if (el.dataset.col) bulkPaint(map, ROWS.map(r => r + el.dataset.col));
   else if (el.dataset.corner) bulkPaint(map, ROWS.flatMap(r => COLS.map(c => r + c)));
   else return;
   refresh();
 });
+
+/* ---------- drag-to-paint a rectangular block of wells ---------- */
+let drag = null;   // { plate, r0, c0, r1, c1, erasing, moved }
+const cellRC = id => [ROWS.indexOf(id[0]), COLS.indexOf(id.slice(1))];
+function wellUnder(e) {
+  let el = (document.elementFromPoint && document.elementFromPoint(e.clientX, e.clientY)) || null;
+  el = el && el.closest ? el.closest('[data-well]') : null;
+  if (!el && e.target && e.target.closest) el = e.target.closest('[data-well]');   // fallback (fast moves / headless)
+  return el;
+}
+function rectBounds(d) {
+  return [Math.min(d.r0, d.r1), Math.max(d.r0, d.r1), Math.min(d.c0, d.c1), Math.max(d.c0, d.c1)];
+}
+function paintPreview() {
+  clearPreview();
+  if (!drag) return;
+  const [rA, rB, cA, cB] = rectBounds(drag);
+  const cls = drag.erasing ? 'drag-erase' : 'drag-paint';
+  for (let r = rA; r <= rB; r++) for (let c = cA; c <= cB; c++) {
+    const el = $('rackGrid').querySelector(`[data-plate="${drag.plate}"][data-well="${ROWS[r] + COLS[c]}"]`);
+    if (el) el.classList.add(cls);
+  }
+}
+function clearPreview() {
+  $('rackGrid').querySelectorAll('.drag-paint, .drag-erase').forEach(el => el.classList.remove('drag-paint', 'drag-erase'));
+}
+$('rackGrid').addEventListener('pointerdown', e => {
+  const el = e.target.closest('[data-well]'); if (!el) return;
+  e.preventDefault();
+  const plate = +el.dataset.plate;
+  const [r, c] = cellRC(el.dataset.well);
+  const cur = state.plates[plate].get(el.dataset.well);
+  drag = { plate, r0: r, c0: c, r1: r, c1: c, erasing: !!(cur && cur.type === state.paint), moved: false };
+  paintPreview();
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const el = wellUnder(e);
+  if (!el || +el.dataset.plate !== drag.plate) return;   // stay within the anchor plate
+  const [r, c] = cellRC(el.dataset.well);
+  if (r !== drag.r1 || c !== drag.c1) { drag.r1 = r; drag.c1 = c; drag.moved = true; paintPreview(); }
+});
+document.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  clearPreview();
+  const map = state.plates[d.plate];
+  if (!d.moved) {
+    paintWell(map, ROWS[d.r0] + COLS[d.c0]);   // no drag → single-well toggle
+  } else {
+    const [rA, rB, cA, cB] = rectBounds(d);
+    for (let r = rA; r <= rB; r++) for (let c = cA; c <= cB; c++) {
+      const id = ROWS[r] + COLS[c];
+      if (d.erasing) map.delete(id); else setWell(map, id, state.paint);
+    }
+  }
+  refresh();
+});
+document.addEventListener('pointercancel', () => { drag = null; clearPreview(); });
 $('rackGrid').addEventListener('input', e => {
   const el = e.target.closest('input[data-label]'); if (!el) return;
   state.labels[+el.dataset.label] = el.value.trim();   // keep focus: don't re-render plates
