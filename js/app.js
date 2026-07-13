@@ -528,9 +528,7 @@ function syncRandomUI() {
 $('randomRadios').addEventListener('change', () => { syncRandomUI(); updatePreviewOnly(); saveSettings(); });
 $('cfg').addEventListener('input', () => { updatePreviewOnly(); saveSettings(); });
 
-async function saveCSV() {
-  const name = cfg().outputName.endsWith('.csv') ? cfg().outputName : cfg().outputName + '.csv';
-  const data = currentCSV;
+async function saveText(name, data) {
   // Preferred: native "Save As" dialog (Chromium browsers, secure context)
   if (window.showSaveFilePicker) {
     try {
@@ -554,7 +552,18 @@ async function saveCSV() {
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
   flash(`↓ "${name}" → your Downloads folder`);
 }
+async function saveCSV() {
+  const name = cfg().outputName.endsWith('.csv') ? cfg().outputName : cfg().outputName + '.csv';
+  await saveText(name, currentCSV);
+}
+// empty plate-layout scaffold (same grid the importer reads): header row + rows A–H
+function layoutTemplate() {
+  const lines = [',' + COLS.join(',')];
+  for (const r of ROWS) lines.push(r + ','.repeat(COLS.length));
+  return lines.join('\r\n') + '\r\n';
+}
 $('downloadBtn').addEventListener('click', saveCSV);
+$('downloadLayoutBtn').addEventListener('click', () => saveText('plate_layout_template.csv', layoutTemplate()));
 $('copyBtn').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(currentCSV); flash('Copied ✓'); } catch { flash('Copy failed'); }
 });
