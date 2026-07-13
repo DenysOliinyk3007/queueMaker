@@ -245,6 +245,7 @@ function stagedCounts() {
 }
 
 let currentCSV = '';
+let lastImportSlot = null;   // rack index of the most recent not-yet-added import (for relocation)
 function updatePreviewOnly() {
   const c = cfg();
   const q = buildQueue();
@@ -289,6 +290,7 @@ function addToQueue() {
   const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label, name }) => ({ type, rack, well, label, name })) };
   state.batches.push(batch);
   state.plates.forEach(m => m.clear());   // clear staging for the next set
+  lastImportSlot = null;
   refresh();
   flash(`Added ${batch.items.length} run${batch.items.length > 1 ? 's' : ''} to queue`);
 }
@@ -423,7 +425,7 @@ $('rackGrid').addEventListener('input', e => {
   updatePreviewOnly();
 });
 
-function clearPainted() { state.plates.forEach(m => m.clear()); refresh(); }
+function clearPainted() { state.plates.forEach(m => m.clear()); lastImportSlot = null; refresh(); }
 $('clearAll').addEventListener('click', clearPainted);
 $('rackGrid').addEventListener('dblclick', clearPainted);   // double-click gaps/headers also clears
 $('addBtn').addEventListener('click', addToQueue);
@@ -514,12 +516,25 @@ $('importFile').addEventListener('change', e => {
       const bits = [`${res.ns} samples`, res.nq && `${res.nq} QC`, res.nb && `${res.nb} blanks`].filter(Boolean).join(', ');
       const sep = res.delim === ';' ? ' · semicolon-separated' : res.delim === '\t' ? ' · tab-separated' : '';
       const numbered = res.numbered ? ` <b>${res.numbered}</b> repeated name${res.numbered > 1 ? 's' : ''} auto-numbered (_01, _02, …).` : '';
-      $('importInfo').innerHTML = `Imported <b>${res.n}</b> wells into <b>${racks()[slotIndex]}</b> (${bits})${sep}.${numbered} Review, then Add to queue.`;
+      $('importInfo').innerHTML = `Imported <b>${res.n}</b> wells into <b>${racks()[slotIndex]}</b> (${bits})${sep}.${numbered} Change the rack to move it. Review, then Add to queue.`;
+      lastImportSlot = slotIndex;
       refresh();
     }
     e.target.value = '';   // let the same file be re-imported
   };
   reader.readAsText(file);
+});
+// changing the rack after an import (before adding) relocates the imported layout
+$('importRack').addEventListener('change', () => {
+  const to = +$('importRack').value;
+  if (lastImportSlot === null || lastImportSlot === to) return;
+  const from = state.plates[lastImportSlot];
+  if (!from.size) { lastImportSlot = null; return; }
+  state.plates[to] = from;                 // move the wells to the newly-selected rack
+  state.plates[lastImportSlot] = new Map();
+  lastImportSlot = to;
+  refresh();
+  $('importInfo').innerHTML = `Moved imported layout to <b>${racks()[to]}</b>. Review, then Add to queue.`;
 });
 
 function syncRandomUI() {
