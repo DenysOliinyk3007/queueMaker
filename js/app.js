@@ -366,10 +366,20 @@ function paintPreview() {
 function clearPreview() {
   $('rackGrid').querySelectorAll('.drag-paint, .drag-erase').forEach(el => el.classList.remove('drag-paint', 'drag-erase'));
 }
+let lastTap = { t: 0, key: '' };   // for detecting a double-click on a well (survives re-render)
 $('rackGrid').addEventListener('pointerdown', e => {
   const el = e.target.closest('[data-well]'); if (!el) return;
   e.preventDefault();
   const plate = +el.dataset.plate;
+  const key = plate + ':' + el.dataset.well;
+  const now = Date.now();
+  if (now - lastTap.t < 350 && lastTap.key === key) {   // double-click a well → clear all painted wells
+    lastTap = { t: 0, key: '' };
+    drag = null; clearPreview();
+    clearPainted();
+    return;
+  }
+  lastTap = { t: now, key };
   const [r, c] = cellRC(el.dataset.well);
   const cur = state.plates[plate].get(el.dataset.well);
   drag = { plate, r0: r, c0: c, r1: r, c1: c, erasing: !!(cur && cur.type === state.paint), moved: false };
@@ -405,7 +415,9 @@ $('rackGrid').addEventListener('input', e => {
   updatePreviewOnly();
 });
 
-$('clearAll').addEventListener('click', () => { state.plates.forEach(m => m.clear()); refresh(); });
+function clearPainted() { state.plates.forEach(m => m.clear()); refresh(); }
+$('clearAll').addEventListener('click', clearPainted);
+$('rackGrid').addEventListener('dblclick', clearPainted);   // double-click gaps/headers also clears
 $('addBtn').addEventListener('click', addToQueue);
 $('removeLastBtn').addEventListener('click', removeLastBatch);
 $('clearQueueBtn').addEventListener('click', clearQueue);
