@@ -431,39 +431,70 @@ $('removeLastBtn').addEventListener('click', removeLastBatch);
 $('clearQueueBtn').addEventListener('click', clearQueue);
 
 /* ---------- import a plate-layout CSV (well grid → names) ---------- */
-function splitCSVLine(line) {
+function splitCSVLine(line, delim) {
   const out = []; let cur = '', q = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
     else if (ch === '"') q = true;
-    else if (ch === ',') { out.push(cur); cur = ''; }
+    else if (ch === delim) { out.push(cur); cur = ''; }
     else cur += ch;
   }
   out.push(cur);
   return out;
 }
-function classifyName(name) { return /blank/i.test(name) ? 'blank' : /\bqc\b|_qc_|qc/i.test(name) ? 'qc' : 'sample'; }
+// pick the separator Excel used: comma, semicolon (German locale), or tab
+function detectDelimiter(line) {
+  const c = { ',': 0, ';': 0, '\t': 0 };
+  for (const ch of line) if (ch in c) c[ch]++;
+  if (c[';'] > c[','] && c[';'] >= c['\t']) return ';';
+  if (c['\t'] > c[','] && c['\t'] >= c[';']) return '\t';
+  return ',';
+}
+function normCol(s) { const t = s.trim(); return /^\d+$/.test(t) ? String(parseInt(t, 10)) : t; }   // "01" -> "1"
+function classifyName(name) {
+  if (/blank/i.test(name)) return 'blank';
+  if (/(?:^|[_\s-])qc(?:[_\s-]|$)/i.test(name)) return 'qc';
+  return 'sample';
+}
 function importLayout(text, slotIndex) {
-  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim().length);
-  if (lines.length < 2) return { error: 'File does not look like a plate layout (need a header row + rows A–H).' };
-  const header = splitCSVLine(lines[0]).slice(1).map(s => s.trim());   // column labels: 1..12
-  const map = state.plates[slotIndex];
-  map.clear();   // the layout defines this rack exactly
-  let n = 0, ns = 0, nq = 0, nb = 0;
+  text = text.replace(/^﻿/, '').replace(/\r/g, '');   // strip BOM + CRs
+  const lines = text.split('\n').filter(l => l.trim().length);
+  if (lines.length < 2) return { error: 'Need a header row (columns) plus at least one well row (A–H).' };
+  const delim = detectDelimiter(lines[0]);
+  const header = splitCSVLine(lines[0], delim).slice(1).map(normCol);
+  // parse into a temp list first, so a bad file never wipes the target rack
+  const entries = [];
   for (let i = 1; i < lines.length; i++) {
-    const f = splitCSVLine(lines[i]);
-    const row = (f[0] || '').trim();
+    const f = splitCSVLine(lines[i], delim);
+    const row = (f[0] || '').trim().toUpperCase();            // accept 'a'..'h'
     if (!ROWS.includes(row)) continue;
     for (let c = 0; c < header.length; c++) {
+      if (!COLS.includes(header[c])) continue;
       const raw = (f[c + 1] || '').trim();
-      if (!raw || !COLS.includes(header[c])) continue;
-      const type = classifyName(raw);
-      map.set(row + header[c], { type, seq: ++state.seq, name: raw });
-      n++; if (type === 'blank') nb++; else if (type === 'qc') nq++; else ns++;
+      if (raw) entries.push({ id: row + header[c], type: classifyName(raw), name: raw });
     }
   }
-  return n ? { n, ns, nq, nb } : { error: 'No named wells found in the file.' };
+  if (!entries.length) return { error: 'No named wells found — expected a plate grid (rows A–H down, columns 1–12 across).' };
+  // disambiguate repeated names with _01, _02, … in reading order (so every File Name is unique)
+  const counts = {};
+  entries.forEach(e => { counts[e.name] = (counts[e.name] || 0) + 1; });
+  const numbered = Object.keys(counts).filter(k => counts[k] > 1).length;
+  const running = {};
+  entries.forEach(e => {
+    if (counts[e.name] > 1) {
+      running[e.name] = (running[e.name] || 0) + 1;
+      e.name = `${e.name}_${String(running[e.name]).padStart(2, '0')}`;
+    }
+  });
+  const map = state.plates[slotIndex];
+  map.clear();
+  let ns = 0, nq = 0, nb = 0;
+  for (const e of entries) {
+    map.set(e.id, { type: e.type, seq: ++state.seq, name: e.name });
+    if (e.type === 'blank') nb++; else if (e.type === 'qc') nq++; else ns++;
+  }
+  return { n: entries.length, ns, nq, nb, delim, numbered };
 }
 function populateImportRack() {
   const sel = $('importRack');
@@ -481,7 +512,9 @@ $('importFile').addEventListener('change', e => {
       $('importInfo').innerHTML = `<span style="color:var(--danger)">${escapeHtml(res.error)}</span>`;
     } else {
       const bits = [`${res.ns} samples`, res.nq && `${res.nq} QC`, res.nb && `${res.nb} blanks`].filter(Boolean).join(', ');
-      $('importInfo').innerHTML = `Imported <b>${res.n}</b> wells into <b>${racks()[slotIndex]}</b> (${bits}). Review, then Add to queue.`;
+      const sep = res.delim === ';' ? ' · semicolon-separated' : res.delim === '\t' ? ' · tab-separated' : '';
+      const numbered = res.numbered ? ` <b>${res.numbered}</b> repeated name${res.numbered > 1 ? 's' : ''} auto-numbered (_01, _02, …).` : '';
+      $('importInfo').innerHTML = `Imported <b>${res.n}</b> wells into <b>${racks()[slotIndex]}</b> (${bits})${sep}.${numbered} Review, then Add to queue.`;
       refresh();
     }
     e.target.value = '';   // let the same file be re-imported
