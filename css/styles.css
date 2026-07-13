@@ -133,23 +133,27 @@ input::placeholder { color:var(--ink-faint); }
 .slot-foot b { font-weight:600; } .slot-foot b.s { color:var(--sample-ink); } .slot-foot b.q { color:var(--qc-ink); } .slot-foot b.b { color:var(--blank-ink); }
 
 .miniplate { overflow-x:auto; }
-table.mp { border-collapse:separate; border-spacing:4px; margin:0 auto; line-height:0; user-select:none; }
+table.mp { border-collapse:separate; border-spacing:1px; margin:0 auto; line-height:0; user-select:none; }
 table.mp th, table.mp td { padding:0; vertical-align:middle; text-align:center; }
-.mp .well { touch-action:none; }
-.mp .well.named { box-shadow: inset 0 0 0 2px rgba(255,255,255,.72); }
-.mp .well.drag-paint { box-shadow: inset 0 0 0 2px var(--accent); }
-.mp .well.drag-erase { box-shadow: inset 0 0 0 2px var(--danger); }
-.mp .corner, .mp .hcol, .mp .hrow, .mp .well { border:1px solid var(--line); cursor:pointer; font-family:var(--mono); background:var(--surface); color:var(--ink-faint); display:inline-flex; align-items:center; justify-content:center; }
-.mp .hcol, .mp .hrow, .mp .corner { border-radius:5px; }
-.mp .hcol { width:26px; height:20px; font-size:9.5px; font-weight:600; }
-.mp .hrow { width:20px; height:26px; font-size:9.5px; font-weight:600; }
+
+.mp .corner, .mp .hcol, .mp .hrow { border:1px solid var(--line); border-radius:5px; cursor:pointer; font-family:var(--mono); background:var(--surface); color:var(--ink-faint); display:inline-flex; align-items:center; justify-content:center; }
+.mp .hcol { width:28px; height:20px; font-size:9.5px; font-weight:600; }
+.mp .hrow { width:20px; height:28px; font-size:9.5px; font-weight:600; }
 .mp .corner { width:20px; height:20px; }
 .mp .corner::after { content:"⛶"; font-size:11px; color:var(--ink-faint); }
-.mp .well { width:26px; height:26px; border-radius:50%; }
-.mp .hcol:hover, .mp .hrow:hover, .mp .corner:hover, .mp .well:hover { border-color:var(--accent); }
-.mp .well.sample { background:var(--sample); border-color:var(--sample); }
-.mp .well.blank  { background:var(--blank);  border-color:var(--blank); }
-.mp .well.qc     { background:var(--qc);     border-color:var(--qc); }
+.mp .hcol:hover, .mp .hrow:hover, .mp .corner:hover { border-color:var(--accent); }
+
+/* well = full-cell square hit area (so the space between circles is draggable too),
+   with the visible circle drawn as an inner ::before */
+.mp .well { width:28px; height:28px; cursor:pointer; touch-action:none; background:transparent; display:inline-flex; align-items:center; justify-content:center; }
+.mp .well::before { content:""; box-sizing:border-box; width:24px; height:24px; border-radius:50%; border:1px solid var(--line); background:var(--surface); }
+.mp .well:hover::before { border-color:var(--accent); }
+.mp .well.sample::before { background:var(--sample); border-color:var(--sample); }
+.mp .well.blank::before  { background:var(--blank);  border-color:var(--blank); }
+.mp .well.qc::before     { background:var(--qc);     border-color:var(--qc); }
+.mp .well.named::before      { box-shadow: inset 0 0 0 2px rgba(255,255,255,.72); }
+.mp .well.drag-paint::before { box-shadow: inset 0 0 0 2px var(--accent); }
+.mp .well.drag-erase::before { box-shadow: inset 0 0 0 2px var(--danger); }
 
 .add-bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:28px; padding-top:20px; border-top:1px solid var(--line-soft); }
 .add-info { font-size:12.5px; color:var(--ink-faint); }
