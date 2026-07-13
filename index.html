@@ -7,7 +7,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=5">
+  <link rel="stylesheet" href="css/styles.css?v=6">
 </head>
 <body>
 
@@ -122,6 +122,12 @@
           </div>
           <span class="instructions">Click a well, or <b>drag to paint a block</b> (drag from a same-type well to erase). <b>Double-click</b> clears all painted wells. Row/column headers fill a line; the ⛶ corner fills/clears the plate.</span>
         </div>
+        <div class="import-bar">
+          <label class="mini-btn file-btn">⤒ Import layout CSV<input type="file" id="importFile" accept=".csv,text/csv" hidden></label>
+          <span class="import-into">into rack</span>
+          <select id="importRack" aria-label="Target rack for import"></select>
+          <span class="import-info" id="importInfo">A grid of well names (rows A–H, columns 1–12). Names get your standard prefix; blank/QC detected automatically.</span>
+        </div>
         <div class="rack-sheet">
           <div class="rack-grid" id="rackGrid"></div>
         </div>
@@ -165,6 +171,6 @@
   </div>
 </main>
 
-<script src="js/app.js?v=5"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>

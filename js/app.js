@@ -78,10 +78,14 @@ function instMethod(c) {
   const folder = (c.thermoPath || '').replace(/[\\/]+$/, '');   // drop any trailing slash(es)
   return folder ? `${folder}\\${c.MSmethod}` : c.MSmethod;
 }
-function prefix(c, label, tag) { return `${c.dateID}_${c.instName}${c.instNo}_Evo${c.evosepNo}_${c.gradientID}_${tag}_${c.personalID}_${fullExp(c, label)}`; }
+// standard prefix up to the personal ID (shared by generated and imported names)
+function prefixHead(c, tag) { return `${c.dateID}_${c.instName}${c.instNo}_Evo${c.evosepNo}_${c.gradientID}_${tag}_${c.personalID}`; }
+function prefix(c, label, tag) { return `${prefixHead(c, tag)}_${fullExp(c, label)}`; }
 function sampleName(c, label, well) { return `${prefix(c, label, SAMPLE_TAG)}_${well}`; }
 function qcName(c, label, well)     { return `${prefix(c, label, QC_TAG)}_QC_${well}`; }
 function blankName(c, label, n)     { return `${prefix(c, label, SAMPLE_TAG)}_blank_${n}`; }
+// imported name = standard prefix + the raw cell text (QC → ADIAMA tag, else SA)
+function customName(c, type, raw) { return `${prefixHead(c, type === 'qc' ? QC_TAG : SAMPLE_TAG)}_${raw}`; }
 
 function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -137,7 +141,8 @@ function buildQueue() {
 
   let blankSeq = 0;
   const rows = sequence.map(it => {
-    const name = it.type === 'blank' ? blankName(it.cfg, it.label, blankSeq++)
+    const name = it.name ? customName(it.cfg, it.type, it.name)
+              : it.type === 'blank' ? blankName(it.cfg, it.label, blankSeq++)
               : it.type === 'qc'    ? qcName(it.cfg, it.label, it.well)
               :                       sampleName(it.cfg, it.label, it.well);
     return { cells: mkRow(it.cfg, inst, name, it.rack, it.well), type: it.type };
@@ -170,7 +175,9 @@ function slotHTML(i) {
     grid += `<tr><th><div class="hrow" data-plate="${i}" data-row="${row}">${row}</div></th>`;
     for (const col of COLS) {
       const id = row + col, cell = wells.get(id), type = cell && cell.type;
-      grid += `<td><div class="well${type ? ' ' + type : ''}" data-plate="${i}" data-well="${id}" title="${id}"></div></td>`;
+      const named = cell && cell.name ? ' named' : '';
+      const ttl = cell && cell.name ? escapeAttr(id + ' · ' + cell.name) : id;
+      grid += `<td><div class="well${type ? ' ' + type : ''}${named}" data-plate="${i}" data-well="${id}" title="${ttl}"></div></td>`;
     }
     grid += '</tr>';
   }
@@ -275,11 +282,11 @@ function addToQueue() {
   const rackLabels = racks();
   state.plates.forEach((wells, i) => {
     const rack = rackLabels[i], label = state.labels[i];
-    for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label });
+    for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label, name: cell.name });
   });
   if (!items.length) { flash('Paint some wells first'); return; }
   items.sort((a, b) => a.seq - b.seq);   // click order within this batch
-  const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label }) => ({ type, rack, well, label })) };
+  const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label, name }) => ({ type, rack, well, label, name })) };
   state.batches.push(batch);
   state.plates.forEach(m => m.clear());   // clear staging for the next set
   refresh();
@@ -305,6 +312,7 @@ function setLC(lc) {
   state.lc = LC_CONFIG[lc] ? lc : 'Evosep';
   document.querySelectorAll('#lcSeg button').forEach(x => x.setAttribute('aria-pressed', x.dataset.lc === state.lc));
   if (state.plates.length !== racks().length) rebuildPlates();   // resize staging to the LC's rack count
+  populateImportRack();
 }
 $('lcSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-lc]'); if (!b) return;
@@ -323,7 +331,7 @@ $('paintSeg').addEventListener('click', e => {
 });
 
 // set a well's type; new wells get the next click number, re-painted wells keep their place
-function setWell(map, id, type) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq }); }
+function setWell(map, id, type) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq, name: cur ? cur.name : undefined }); }
 function paintWell(map, id) { const cur = map.get(id); if (cur && cur.type === state.paint) map.delete(id); else setWell(map, id, state.paint); }
 function bulkPaint(map, ids) {
   const allCurrent = ids.every(id => { const c = map.get(id); return c && c.type === state.paint; });
@@ -422,6 +430,65 @@ $('addBtn').addEventListener('click', addToQueue);
 $('removeLastBtn').addEventListener('click', removeLastBatch);
 $('clearQueueBtn').addEventListener('click', clearQueue);
 
+/* ---------- import a plate-layout CSV (well grid → names) ---------- */
+function splitCSVLine(line) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+function classifyName(name) { return /blank/i.test(name) ? 'blank' : /\bqc\b|_qc_|qc/i.test(name) ? 'qc' : 'sample'; }
+function importLayout(text, slotIndex) {
+  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim().length);
+  if (lines.length < 2) return { error: 'File does not look like a plate layout (need a header row + rows A–H).' };
+  const header = splitCSVLine(lines[0]).slice(1).map(s => s.trim());   // column labels: 1..12
+  const map = state.plates[slotIndex];
+  map.clear();   // the layout defines this rack exactly
+  let n = 0, ns = 0, nq = 0, nb = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const f = splitCSVLine(lines[i]);
+    const row = (f[0] || '').trim();
+    if (!ROWS.includes(row)) continue;
+    for (let c = 0; c < header.length; c++) {
+      const raw = (f[c + 1] || '').trim();
+      if (!raw || !COLS.includes(header[c])) continue;
+      const type = classifyName(raw);
+      map.set(row + header[c], { type, seq: ++state.seq, name: raw });
+      n++; if (type === 'blank') nb++; else if (type === 'qc') nq++; else ns++;
+    }
+  }
+  return n ? { n, ns, nq, nb } : { error: 'No named wells found in the file.' };
+}
+function populateImportRack() {
+  const sel = $('importRack');
+  const keep = sel.value;
+  sel.innerHTML = racks().map((r, i) => `<option value="${i}">${r}</option>`).join('');
+  if (keep && +keep < racks().length) sel.value = keep;
+}
+$('importFile').addEventListener('change', e => {
+  const file = e.target.files && e.target.files[0]; if (!file) return;
+  const slotIndex = +$('importRack').value;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const res = importLayout(String(reader.result), slotIndex);
+    if (res.error) {
+      $('importInfo').innerHTML = `<span style="color:var(--danger)">${escapeHtml(res.error)}</span>`;
+    } else {
+      const bits = [`${res.ns} samples`, res.nq && `${res.nq} QC`, res.nb && `${res.nb} blanks`].filter(Boolean).join(', ');
+      $('importInfo').innerHTML = `Imported <b>${res.n}</b> wells into <b>${racks()[slotIndex]}</b> (${bits}). Review, then Add to queue.`;
+      refresh();
+    }
+    e.target.value = '';   // let the same file be re-imported
+  };
+  reader.readAsText(file);
+});
+
 function syncRandomUI() {
   document.querySelectorAll('#randomRadios .radio-opt').forEach(o => o.dataset.on = o.querySelector('input').checked);
 }
@@ -467,4 +534,5 @@ $('themeBtn').addEventListener('click', () => {
 });
 
 loadSettings();   // restore the user's previous inputs (if any) before first render
+populateImportRack();
 refresh();
