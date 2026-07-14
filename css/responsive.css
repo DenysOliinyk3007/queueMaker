@@ -1,0 +1,72 @@
+/* ============================================================
+   Responsive layout — tablet and phone.
+   Loaded last so these overrides win. Base layout already
+   stacks the two-column grid at 960px (see base.css); the wide
+   surfaces (mini-plate, queue table, 384 modal) already scroll.
+   ============================================================ */
+
+/* ---- Tablet and below: single column, tighter chrome ---- */
+@media (max-width: 960px) {
+  header.app { padding:14px 18px; }
+  .rail  { padding:18px 18px 40px; }
+  .stage { padding:18px 18px 72px; }
+  .panel-bd { padding:16px; }
+  .rack-sheet { padding:18px; }
+}
+
+/* ---- Phone ---- */
+@media (max-width: 620px) {
+  header.app { gap:8px; padding:12px 14px; }
+  header.app h1 { font-size:16px; }
+  header.app .sub { display:none; }
+  .theme-btn { padding:5px 9px; font-size:12px; }
+
+  .rail  { padding:14px 14px 32px; }
+  .stage { padding:14px 12px 60px; }
+
+  .panel { border-radius:10px; }
+  .panel-hd { padding:12px 14px; gap:8px; }
+  .panel-hd h2 { font-size:13.5px; }
+  .panel-bd { padding:14px 12px; }
+
+  /* paint / import bars: full-width controls, no min-width overflow */
+  .paint-bar .seg { width:100%; }
+  .paint-bar .instructions,
+  .import-bar .import-info { min-width:0; flex-basis:100%; }
+
+  fieldset.stage-fs { margin-bottom:14px; }
+
+  /* smaller plate wells so a 96-well grid needs less horizontal scrolling */
+  .mp .hcol   { width:24px; height:18px; }
+  .mp .hrow   { width:18px; height:24px; }
+  .mp .corner { width:18px; height:18px; }
+  .mp .well   { width:24px; height:24px; }
+  .mp .well::before { width:20px; height:20px; }
+  .rack-sheet { padding:12px; }
+
+  /* stats + queue table */
+  .stat { padding:7px 11px; min-width:60px; }
+  .stat .n { font-size:18px; }
+  table.q th, table.q td { padding:5px 8px; }
+  .tbl-wrap { max-height:52vh; }
+
+  /* primary "Add to queue" button spans the row */
+  .add-bar { gap:10px; margin-top:20px; padding-top:16px; }
+  .add-bar .add-btn-wrap { flex:1 1 100%; display:block; }
+  .add-bar .add-btn-wrap .btn { width:100%; justify-content:center; }
+
+  /* 384 modal */
+  .modal-backdrop { padding:12px; }
+  .modal-hd { flex-wrap:wrap; padding:14px 16px; }
+  .q-schema { margin-left:0; }
+  .modal-bd { padding:16px; }
+}
+
+/* ---- Very narrow phones ---- */
+@media (max-width: 380px) {
+  .mp .hcol { width:22px; }
+  .mp .hrow { height:22px; }
+  .mp .well { width:22px; height:22px; }
+  .mp .well::before { width:18px; height:18px; }
+  .export-bar .btn { flex:1 1 auto; justify-content:center; }
+}
