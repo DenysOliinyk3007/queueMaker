@@ -15,7 +15,7 @@ const $ = id => document.getElementById(id);
 
 // which text fields are remembered between visits (date is intentionally excluded — it resets to today)
 const STORE_KEY = 'queueMaker.settings.v1';
-const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','output_name'];
+const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','output_name','blankBracket','blankInterval','blankEvery'];
 
 /* ---------- state (starts empty) ---------- */
 const state = {
@@ -43,9 +43,13 @@ function cfg() {
     gradientID: val('gradientID'), personalID: val('personalID'), dateID: val('dateID'),
     expID: val('expID'),
     MSmethod: val('MSmethod'), LCmethod: val('LCmethod'), thermoPath: val('ThermoMethodPath'),
-    random: document.querySelector('input[name="rnd"]:checked').value,   // 'off' | 'slot' | 'full'
+    random: document.querySelector('input[name="rnd"]:checked').value,   // 'off' | 'slot' | 'full' | 'condition'
     outputName: ($('output_name').value.trim() || 'queue.csv'),
     lc: state.lc,
+    blankRack: $('blankRack').value,
+    blankBracket: Math.max(0, parseInt($('blankBracket').value || '0', 10)),
+    blankInterval: $('blankInterval').value,                             // 'none' | 'every' | 'between'
+    blankEvery: Math.max(1, parseInt($('blankEvery').value || '1', 10)),
   };
 }
 
@@ -89,23 +93,60 @@ function customName(c, type, raw) { return `${prefixHead(c, type === 'qc' ? QC_T
 
 function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-/* shuffle only 'sample' items among their own positions; blanks/QCs stay put.
-   perSlot=true shuffles each plate's samples within that plate's own sample positions. */
-function shuffleSamplesFixed(seq, perSlot) {
+// a sample's "condition" = its raw imported name (whole name); non-imported wells are each their own
+function conditionKey(it) { return it.cond != null ? it.cond : '#' + it.rack + it.well; }
+
+/* reorder ONLY sample items; QCs and painted blanks keep their positions.
+   mode 'slot'      → shuffle samples within each rack
+        'full'      → shuffle all samples together
+        'condition' → group by condition (first-appearance order), shuffle within each */
+function orderSamples(seq, mode) {
+  if (mode === 'off') return seq;
   const out = seq.slice();
-  const shuffleGroup = indices => {
-    const picked = shuffle(indices.map(i => seq[i]));
-    indices.forEach((pos, k) => out[pos] = picked[k]);
-  };
-  if (perSlot) {
+  const idx = [];
+  seq.forEach((it, i) => { if (it.type === 'sample') idx.push(i); });
+
+  if (mode === 'slot') {
     const groups = {};
-    seq.forEach((it, i) => { if (it.type === 'sample') (groups[it.rack] = groups[it.rack] || []).push(i); });
-    Object.values(groups).forEach(shuffleGroup);
-  } else {
-    const idx = [];
-    seq.forEach((it, i) => { if (it.type === 'sample') idx.push(i); });
-    shuffleGroup(idx);
+    idx.forEach(i => { (groups[seq[i].rack] = groups[seq[i].rack] || []).push(i); });
+    Object.values(groups).forEach(g => { const sh = shuffle(g.map(i => seq[i])); g.forEach((p, k) => out[p] = sh[k]); });
+    return out;
   }
+
+  let ordered;
+  if (mode === 'condition') {
+    const groups = new Map();                 // preserves first-appearance order of conditions
+    idx.forEach(i => { const k = conditionKey(seq[i]); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(seq[i]); });
+    ordered = [];
+    groups.forEach(g => ordered.push(...shuffle(g)));
+  } else {   // 'full'
+    ordered = shuffle(idx.map(i => seq[i]));
+  }
+  idx.forEach((p, k) => out[p] = ordered[k]);
+  return out;
+}
+
+/* insert auto blank/wash runs per the Blanks block; positions cycle A1, A2… in the blank rack */
+function insertBlanks(seq, c) {
+  if (!c.blankBracket && c.blankInterval === 'none') return seq;
+  const positions = ROWS.flatMap(r => COLS.map(col => r + col));
+  let bi = 0;
+  const nextBlank = () => ({ type: 'blank', rack: c.blankRack, well: positions[(bi++) % positions.length], cfg: c, label: '' });
+  const out = [];
+  for (let k = 0; k < c.blankBracket; k++) out.push(nextBlank());     // before the run
+  if (c.blankInterval === 'every') {
+    let n = 0;
+    for (const it of seq) { out.push(it); if (it.type === 'sample' && ++n % c.blankEvery === 0) out.push(nextBlank()); }
+  } else if (c.blankInterval === 'between') {
+    let prev = null;
+    for (const it of seq) {
+      if (it.type === 'sample') { const k = conditionKey(it); if (prev !== null && k !== prev) out.push(nextBlank()); prev = k; }
+      out.push(it);
+    }
+  } else {
+    out.push(...seq);
+  }
+  for (let k = 0; k < c.blankBracket; k++) out.push(nextBlank());     // after the run
   return out;
 }
 
@@ -125,22 +166,19 @@ function buildQueue() {
     ? ['File Name','Path','Instrument Method','Position']
     : ['Sample Name','MS Method','LC Method','Rack Type','Rack Position','Plate Type','Plate Position','Vial Position','Data File'];
 
-  let sampleCount = 0, qcCount = 0, blankCount = 0;
-  const usedRacks = new Set();
-  const items = [];   // flatten batches in add order; each item carries its batch's cfg
-  state.batches.forEach(b => b.items.forEach(it => {
-    if (it.type === 'sample') sampleCount++; else if (it.type === 'qc') qcCount++; else blankCount++;
-    usedRacks.add(it.rack);
-    items.push({ ...it, cfg: b.cfg });
-  }));
+  const c = cfg();   // global config: blank settings + naming for auto-blanks
+  const items = [];  // flatten batches in add order; each item carries its batch's cfg + condition
+  state.batches.forEach(b => b.items.forEach(it => items.push({ ...it, cfg: b.cfg })));
 
   const rnd = document.querySelector('input[name="rnd"]:checked').value;
-  const sequence = rnd === 'slot' ? shuffleSamplesFixed(items, true)
-                : rnd === 'full' ? shuffleSamplesFixed(items, false)
-                :                  items;
+  let sequence = orderSamples(items, rnd);
+  sequence = insertBlanks(sequence, c);
 
-  let blankSeq = 0;
+  let sampleCount = 0, qcCount = 0, blankCount = 0, blankSeq = 0;
+  const usedRacks = new Set();
   const rows = sequence.map(it => {
+    if (it.type === 'sample') sampleCount++; else if (it.type === 'qc') qcCount++; else blankCount++;
+    usedRacks.add(it.rack);
     const name = it.name ? customName(it.cfg, it.type, it.name)
               : it.type === 'blank' ? blankName(it.cfg, it.label, blankSeq++)
               : it.type === 'qc'    ? qcName(it.cfg, it.label, it.well)
@@ -251,11 +289,8 @@ function updatePreviewOnly() {
   const q = buildQueue();
   currentCSV = toCSV(q);
   renderTable(q); renderStats(q);
-  $('namePreview').innerHTML = 'e.g. <b>' + escapeHtml(sampleName(c, state.labels[0], 'A1')) + '</b>';
-  $('methodPreview').innerHTML = c.inst === 'Thermo'
-    ? 'Instrument Method → <b>' + escapeHtml(instMethod(c)) + '</b><br>must be an existing .meth on the acquisition PC, or Xcalibur leaves the column blank.'
-    : 'MS Method → <b>' + escapeHtml(c.MSmethod) + '</b> · LC Method → <b>' + escapeHtml(c.LCmethod) + '</b>';
   $('bracketNote').style.display = c.inst === 'Thermo' ? '' : 'none';
+  $('blankEveryField').classList.toggle('collapsed', $('blankInterval').value !== 'every');
   $('fnamePrev').textContent = c.outputName;
 
   // staged (painted-but-not-yet-added) summary + which method the next Add will use
@@ -284,11 +319,11 @@ function addToQueue() {
   const rackLabels = racks();
   state.plates.forEach((wells, i) => {
     const rack = rackLabels[i], label = state.labels[i];
-    for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label, name: cell.name });
+    for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label, name: cell.name, cond: cell.cond });
   });
   if (!items.length) { flash('Paint some wells first'); return; }
   items.sort((a, b) => a.seq - b.seq);   // click order within this batch
-  const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label, name }) => ({ type, rack, well, label, name })) };
+  const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label, name, cond }) => ({ type, rack, well, label, name, cond })) };
   state.batches.push(batch);
   state.plates.forEach(m => m.clear());   // clear staging for the next set
   lastImportSlot = null;
@@ -316,6 +351,7 @@ function setLC(lc) {
   document.querySelectorAll('#lcSeg button').forEach(x => x.setAttribute('aria-pressed', x.dataset.lc === state.lc));
   if (state.plates.length !== racks().length) rebuildPlates();   // resize staging to the LC's rack count
   populateImportRack();
+  populateBlankRack();
 }
 $('lcSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-lc]'); if (!b) return;
@@ -334,7 +370,7 @@ $('paintSeg').addEventListener('click', e => {
 });
 
 // set a well's type; new wells get the next click number, re-painted wells keep their place
-function setWell(map, id, type) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq, name: cur ? cur.name : undefined }); }
+function setWell(map, id, type) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq, name: cur ? cur.name : undefined, cond: cur ? cur.cond : undefined }); }
 function paintWell(map, id) { const cur = map.get(id); if (cur && cur.type === state.paint) map.delete(id); else setWell(map, id, state.paint); }
 function bulkPaint(map, ids) {
   const allCurrent = ids.every(id => { const c = map.get(id); return c && c.type === state.paint; });
@@ -485,6 +521,7 @@ function importLayout(text, slotIndex) {
   const numbered = Object.keys(counts).filter(k => counts[k] > 1).length;
   const running = {};
   entries.forEach(e => {
+    e.cond = e.name;   // condition = the raw imported name (whole name), before numbering
     if (counts[e.name] > 1) {
       running[e.name] = (running[e.name] || 0) + 1;
       e.name = `${e.name}_${String(running[e.name]).padStart(2, '0')}`;
@@ -494,7 +531,7 @@ function importLayout(text, slotIndex) {
   map.clear();
   let ns = 0, nq = 0, nb = 0;
   for (const e of entries) {
-    map.set(e.id, { type: e.type, seq: ++state.seq, name: e.name });
+    map.set(e.id, { type: e.type, seq: ++state.seq, name: e.name, cond: e.cond });
     if (e.type === 'blank') nb++; else if (e.type === 'qc') nq++; else ns++;
   }
   return { n: entries.length, ns, nq, nb, delim, numbered };
@@ -504,6 +541,12 @@ function populateImportRack() {
   const keep = sel.value;
   sel.innerHTML = racks().map((r, i) => `<option value="${i}">${r}</option>`).join('');
   if (keep && +keep < racks().length) sel.value = keep;
+}
+function populateBlankRack() {
+  const sel = $('blankRack');
+  const keep = sel.value;
+  sel.innerHTML = racks().map(r => `<option value="${r}">${r}</option>`).join('');
+  if (racks().includes(keep)) sel.value = keep; else sel.value = racks()[racks().length - 1];   // default: last rack
 }
 $('importFile').addEventListener('change', e => {
   const file = e.target.files && e.target.files[0]; if (!file) return;
@@ -595,4 +638,5 @@ $('themeBtn').addEventListener('click', () => {
 
 loadSettings();   // restore the user's previous inputs (if any) before first render
 populateImportRack();
+populateBlankRack();
 refresh();

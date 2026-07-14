@@ -11,7 +11,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=13">
+  <link rel="stylesheet" href="css/styles.css?v=15">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
     <div class="glyph" aria-hidden="true"></div>
     <div>
       <h1>Queue Maker</h1>
-      <div class="sub">MS acquisition queue builder · Evosep &amp; Vanquish Neo · Thermo &amp; Sciex</div>
+      <div class="sub">MS acquisition queue builder</div>
     </div>
   </div>
   <div class="spacer"></div>
@@ -41,8 +41,8 @@
     <fieldset>
       <legend>Autosampler / LC</legend>
       <div class="seg" id="lcSeg">
-        <button type="button" data-lc="Evosep" aria-pressed="true">Evosep · S1–S6</button>
-        <button type="button" data-lc="VanquishNeo" aria-pressed="false">Vanquish Neo · R/G/B/Y</button>
+        <button type="button" data-lc="Evosep" aria-pressed="true">Evosep</button>
+        <button type="button" data-lc="VanquishNeo" aria-pressed="false">Vanquish Neo</button>
       </div>
     </fieldset>
 
@@ -62,9 +62,7 @@
       </div>
       <div class="field">
         <label class="lab" for="expID">Experiment ID</label><input type="text" id="expID" placeholder="experiment">
-        <div class="hint">Fixed tags follow the gradient (<b>SA</b> for samples/blanks, <b>ADIAMA</b> for QCs); the plate label is appended → <span style="font-family:var(--mono)">…_gradient_SA_name-surname_experiment_plate1_A1</span></div>
       </div>
-      <div class="namebox" id="namePreview"></div>
     </fieldset>
 
     <fieldset>
@@ -81,7 +79,6 @@
         <label class="lab" for="LCmethod">LC method (Sciex)</label>
         <input type="text" id="LCmethod" placeholder="LC-method-of-choice">
       </div>
-      <div class="namebox" id="methodPreview" style="word-break:break-all;"></div>
     </fieldset>
 
     <fieldset>
@@ -99,8 +96,33 @@
           <input type="radio" name="rnd" value="full">
           <span><span class="rt">Across all slots</span><br><span class="rd">shuffle all samples together</span></span>
         </label>
+        <label class="radio-opt" data-on="false">
+          <input type="radio" name="rnd" value="condition">
+          <span><span class="rt">Within each condition</span><br><span class="rd">group by condition (whole name); shuffle inside each</span></span>
+        </label>
       </div>
       <div class="hint">Only samples move. Blanks &amp; QCs stay in the order you paint them.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Blanks / washes</legend>
+      <div class="field row">
+        <div><label class="lab" for="blankRack">Blank rack</label><select id="blankRack"></select></div>
+        <div><label class="lab" for="blankBracket">Before &amp; after</label><input type="number" id="blankBracket" value="2" min="0" max="48"></div>
+      </div>
+      <div class="field">
+        <label class="lab" for="blankInterval">During the run</label>
+        <select id="blankInterval">
+          <option value="none">— no blanks between samples —</option>
+          <option value="every">Every N samples</option>
+          <option value="between">Between conditions</option>
+        </select>
+      </div>
+      <div class="field collapsed" id="blankEveryField">
+        <label class="lab" for="blankEvery">Blank after every N samples</label>
+        <input type="number" id="blankEvery" value="12" min="1" max="96">
+      </div>
+      <div class="hint">Auto-blanks cycle positions A1, A2… in the chosen rack. Painted blank wells are kept too.</div>
     </fieldset>
 
     <fieldset>
@@ -177,6 +199,6 @@
   </div>
 </main>
 
-<script src="js/app.js?v=13"></script>
+<script src="js/app.js?v=15"></script>
 </body>
 </html>
