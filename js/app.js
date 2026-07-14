@@ -384,6 +384,7 @@ function setLC(lc) {
   if (state.plates.length !== racks().length) rebuildPlates();   // resize staging to the LC's rack count
   populateImportRack();
   populateBlankRack();
+  populateQuadrantMap();
 }
 $('lcSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-lc]'); if (!b) return;
@@ -543,20 +544,32 @@ $('plate384grid').addEventListener('click', e => {
   else return;
   render384();
 });
+// Q1→rack0, Q2→rack1, … by default; preserves a valid existing choice
+function populateQuadrantMap() {
+  const rk = racks();
+  document.querySelectorAll('#qSchema select[data-q]').forEach((sel, i) => {
+    const keep = sel.value;
+    sel.innerHTML = rk.map(r => `<option value="${r}">${r}</option>`).join('');
+    sel.value = rk.includes(keep) ? keep : rk[Math.min(i, rk.length - 1)];
+  });
+}
 function translate384() {
   if (!state.plate384.size) { flash('Paint some wells on the 384 plate first'); return; }
-  const rackLabels = racks();
+  const rk = racks();
+  const qTarget = {};   // quadrant → rack index (from the schema dropdowns)
+  document.querySelectorAll('#qSchema select[data-q]').forEach(sel => { qTarget[sel.dataset.q] = rk.indexOf(sel.value); });
   const summary = { 1: 0, 2: 0, 3: 0, 4: 0 };
   for (const [id, cell] of state.plate384) {
     const rIdx = ROWS384.indexOf(id[0]), cIdx = COLS384.indexOf(id.slice(1));
     const { q, well96 } = to96(rIdx, cIdx);
-    if (q - 1 >= rackLabels.length) continue;                       // not enough racks (won't happen: 4 ≤ racks)
-    setNamedWell(state.plates[q - 1], well96, cell.type, `Q${q}_${well96}`);
+    const rackIdx = qTarget[q];
+    if (rackIdx == null || rackIdx < 0) continue;
+    setNamedWell(state.plates[rackIdx], well96, cell.type, `Q${q}_${well96}`);
     summary[q]++;
   }
   closeModal();
   refresh();
-  flash('Translated → ' + [1, 2, 3, 4].filter(q => summary[q]).map(q => `${rackLabels[q - 1]} Q${q}:${summary[q]}`).join('  '));
+  flash('Translated → ' + [1, 2, 3, 4].filter(q => summary[q]).map(q => `${rk[qTarget[q]]} Q${q}:${summary[q]}`).join('  '));
 }
 function openModal() { $('modal384').hidden = false; setPaint(state.paint); render384(); }
 function closeModal() { $('modal384').hidden = true; }
@@ -754,4 +767,5 @@ $('themeBtn').addEventListener('click', () => {
 loadSettings();   // restore the user's previous inputs (if any) before first render
 populateImportRack();
 populateBlankRack();
+populateQuadrantMap();
 refresh();

@@ -11,7 +11,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=19">
+  <link rel="stylesheet" href="css/styles.css?v=20">
 </head>
 <body>
 
@@ -215,7 +215,13 @@
           <button type="button" data-paint="blank" aria-pressed="false"><i class="pdot" style="background:var(--blank)"></i>Blank</button>
           <button type="button" data-paint="qc" aria-pressed="false"><i class="pdot" style="background:var(--qc)"></i>QC</button>
         </div>
-        <span class="instructions">Paint wells (click / drag a block / row-column headers). On translate, quadrants map <b>Q1→rack 1, Q2→rack 2, Q3→rack 3, Q4→rack 4</b>, and each name gets its quadrant (<span style="font-family:var(--mono)">Q1_A1</span>) so File Names stay unique.</span>
+        <div class="q-schema" id="qSchema">
+          <span class="lead">Quadrant → rack</span>
+          <b>Q1</b><select data-q="1" aria-label="Quadrant 1 rack"></select>
+          <b>Q2</b><select data-q="2" aria-label="Quadrant 2 rack"></select>
+          <b>Q3</b><select data-q="3" aria-label="Quadrant 3 rack"></select>
+          <b>Q4</b><select data-q="4" aria-label="Quadrant 4 rack"></select>
+        </div>
       </div>
       <div class="plate384-wrap"><div id="plate384grid"></div></div>
       <div class="modal-ft">
@@ -228,6 +234,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=19"></script>
+<script src="js/app.js?v=20"></script>
 </body>
 </html>
