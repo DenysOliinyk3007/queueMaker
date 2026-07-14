@@ -11,11 +11,11 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/theme.css?v=27">
-  <link rel="stylesheet" href="css/base.css?v=27">
-  <link rel="stylesheet" href="css/plate.css?v=27">
-  <link rel="stylesheet" href="css/queue.css?v=27">
-  <link rel="stylesheet" href="css/modal.css?v=27">
+  <link rel="stylesheet" href="css/theme.css?v=29">
+  <link rel="stylesheet" href="css/base.css?v=29">
+  <link rel="stylesheet" href="css/plate.css?v=29">
+  <link rel="stylesheet" href="css/queue.css?v=29">
+  <link rel="stylesheet" href="css/modal.css?v=29">
 </head>
 <body>
 
@@ -34,25 +34,30 @@
 <main>
   <!-- ====================== CONFIG RAIL ====================== -->
   <form class="rail" id="cfg" autocomplete="off">
-    <fieldset>
-      <legend>Instrument ID</legend>
+    <fieldset class="collapsible open" id="fsInst">
+      <legend><span class="fs-caret" aria-hidden="true">▸</span>Instrument ID</legend>
+      <div class="fs-body">
       <div class="seg" id="instSeg">
         <button type="button" data-inst="Thermo" aria-pressed="true">Thermo</button>
         <button type="button" data-inst="Sciex" aria-pressed="false">Sciex</button>
         <button type="button" data-inst="Bruker" aria-pressed="false">Bruker</button>
       </div>
+      </div>
     </fieldset>
 
-    <fieldset>
-      <legend>LC</legend>
+    <fieldset class="collapsible open" id="fsLC">
+      <legend><span class="fs-caret" aria-hidden="true">▸</span>LC</legend>
+      <div class="fs-body">
       <div class="seg" id="lcSeg">
         <button type="button" data-lc="Evosep" aria-pressed="true">Evosep</button>
         <button type="button" data-lc="VanquishNeo" aria-pressed="false">Vanquish Neo</button>
       </div>
+      </div>
     </fieldset>
 
-    <fieldset>
-      <legend>Sample naming</legend>
+    <fieldset class="collapsible open" id="fsNaming">
+      <legend><span class="fs-caret" aria-hidden="true">▸</span>Sample naming</legend>
+      <div class="fs-body">
       <div class="field">
         <label class="lab" for="instID">Instrument</label>
         <select id="instID">
@@ -91,10 +96,12 @@
         <label class="lab" for="expID">Experiment ID <span style="color:var(--danger)">*</span></label><input type="text" id="expID" placeholder="required" required>
         <div class="hint err" id="expIDwarn" hidden>Experiment ID is required — enter one to build the queue.</div>
       </div>
+      </div>
     </fieldset>
 
-    <fieldset>
-      <legend>Methods</legend>
+    <fieldset class="collapsible open" id="fsMethods">
+      <legend><span class="fs-caret" aria-hidden="true">▸</span>Methods</legend>
+      <div class="fs-body">
       <div class="field">
         <label class="lab" for="MSmethod">MS method</label>
         <input type="text" id="MSmethod" placeholder="method-of-choice">
@@ -110,6 +117,7 @@
       <div class="field collapsed" id="brukerSepField">
         <label class="lab" for="brukerSep">Separation method (Bruker)</label>
         <input type="text" id="brukerSep" placeholder="30 samples per day.m?HyStar_LC">
+      </div>
       </div>
     </fieldset>
 
@@ -142,7 +150,7 @@
       <div class="fs-body">
       <div class="field row">
         <div><label class="lab" for="blankRack">Blank rack</label><select id="blankRack"></select></div>
-        <div><label class="lab" for="blankBracket">Before &amp; after</label><input type="number" id="blankBracket" value="2" min="0" max="48"></div>
+        <div><label class="lab" for="blankBracket">Before &amp; after</label><input type="number" id="blankBracket" value="0" min="0" max="48"></div>
       </div>
       <div class="field">
         <label class="lab" for="blankInterval">During the run</label>
@@ -160,9 +168,11 @@
       </div>
     </fieldset>
 
-    <fieldset>
-      <legend>Output</legend>
+    <fieldset class="collapsible open" id="fsOutput">
+      <legend><span class="fs-caret" aria-hidden="true">▸</span>Output</legend>
+      <div class="fs-body">
       <div class="field"><label class="lab" for="output_name">File name</label><input type="text" id="output_name" value="queue.csv"></div>
+      </div>
     </fieldset>
   </form>
 
@@ -176,22 +186,28 @@
         <button type="button" class="mini-btn" id="clearAll">Clear all selection</button>
       </div>
       <div class="panel-bd">
-        <div class="paint-bar">
-          <div class="seg paint" id="paintSeg">
-            <button type="button" data-paint="sample" aria-pressed="true"><i class="pdot" style="background:var(--sample)"></i>Sample</button>
-            <button type="button" data-paint="blank" aria-pressed="false"><i class="pdot" style="background:var(--blank)"></i>Blank</button>
-            <button type="button" data-paint="qc" aria-pressed="false"><i class="pdot" style="background:var(--qc)"></i>QC</button>
+        <fieldset class="stage-fs">
+          <legend>Paint wells</legend>
+          <div class="paint-bar">
+            <div class="seg paint" id="paintSeg">
+              <button type="button" data-paint="sample" aria-pressed="true"><i class="pdot" style="background:var(--sample)"></i>Sample</button>
+              <button type="button" data-paint="blank" aria-pressed="false"><i class="pdot" style="background:var(--blank)"></i>Blank</button>
+              <button type="button" data-paint="qc" aria-pressed="false"><i class="pdot" style="background:var(--qc)"></i>QC</button>
+            </div>
+            <span class="instructions">Click an individual well, or drag to paint a block. Row/column headers fill a line, the ⛶ button fills the entire slot.</span>
           </div>
-          <span class="instructions">Click an individual well, or drag to paint a block. Row/column headers fill a line, the ⛶ button fills the entire slot.</span>
-        </div>
-        <div class="import-bar">
-          <button type="button" class="mini-btn" id="downloadLayoutBtn">⤓ Download layout</button>
-          <label class="mini-btn file-btn">⤒ Import layout CSV<input type="file" id="importFile" accept=".csv,text/csv" hidden></label>
-          <span class="import-into">into rack</span>
-          <select id="importRack" aria-label="Target rack for import"></select>
-          <button type="button" class="mini-btn" id="moveHereBtn" disabled title="Move the most recent import to the selected rack">↔ Move here</button>
-          <span class="import-info" id="importInfo">Download the default grid, manually enter your preferred sample names and import the resulting file. Import different files into different slots.</span>
-        </div>
+        </fieldset>
+        <fieldset class="stage-fs">
+          <legend>Import layout</legend>
+          <div class="import-bar">
+            <button type="button" class="mini-btn" id="downloadLayoutBtn">⤓ Download layout</button>
+            <label class="mini-btn file-btn">⤒ Import layout CSV<input type="file" id="importFile" accept=".csv,text/csv" hidden></label>
+            <span class="import-into">into rack</span>
+            <select id="importRack" aria-label="Target rack for import"></select>
+            <button type="button" class="mini-btn" id="moveHereBtn" disabled title="Move the most recent import to the selected rack">↔ Move here</button>
+            <span class="import-info" id="importInfo">Download the default grid, manually enter your preferred sample names and import the resulting file. Import different files into different slots.</span>
+          </div>
+        </fieldset>
         <div class="rack-sheet">
           <div class="rack-grid" id="rackGrid"></div>
         </div>
@@ -268,14 +284,14 @@
   </div>
 </div>
 
-<script src="js/core.js?v=27"></script>
-<script src="js/naming.js?v=27"></script>
-<script src="js/queue.js?v=27"></script>
-<script src="js/render.js?v=27"></script>
-<script src="js/interactions.js?v=27"></script>
-<script src="js/modal384.js?v=27"></script>
-<script src="js/ui.js?v=27"></script>
-<script src="js/io.js?v=27"></script>
-<script src="js/main.js?v=27"></script>
+<script src="js/core.js?v=29"></script>
+<script src="js/naming.js?v=29"></script>
+<script src="js/queue.js?v=29"></script>
+<script src="js/render.js?v=29"></script>
+<script src="js/interactions.js?v=29"></script>
+<script src="js/modal384.js?v=29"></script>
+<script src="js/ui.js?v=29"></script>
+<script src="js/io.js?v=29"></script>
+<script src="js/main.js?v=29"></script>
 </body>
 </html>

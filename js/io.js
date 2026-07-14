@@ -76,7 +76,7 @@ function populateBlankRack() {
   const sel = $('blankRack');
   const keep = sel.value;
   sel.innerHTML = racks().map(r => `<option value="${r}">${r}</option>`).join('');
-  if (racks().includes(keep)) sel.value = keep; else sel.value = racks()[racks().length - 1];   // default: last rack
+  if (racks().includes(keep)) sel.value = keep; else sel.value = racks()[Math.min(1, racks().length - 1)];   // default: rack 2
 }
 $('importFile').addEventListener('change', e => {
   const file = e.target.files && e.target.files[0]; if (!file) return;
