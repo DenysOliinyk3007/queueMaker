@@ -11,11 +11,11 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/theme.css?v=23">
-  <link rel="stylesheet" href="css/base.css?v=23">
-  <link rel="stylesheet" href="css/plate.css?v=23">
-  <link rel="stylesheet" href="css/queue.css?v=23">
-  <link rel="stylesheet" href="css/modal.css?v=23">
+  <link rel="stylesheet" href="css/theme.css?v=27">
+  <link rel="stylesheet" href="css/base.css?v=27">
+  <link rel="stylesheet" href="css/plate.css?v=27">
+  <link rel="stylesheet" href="css/queue.css?v=27">
+  <link rel="stylesheet" href="css/modal.css?v=27">
 </head>
 <body>
 
@@ -113,8 +113,9 @@
       </div>
     </fieldset>
 
-    <fieldset>
-      <legend>Randomization</legend>
+    <fieldset class="collapsible" id="fsRandom">
+      <legend><span class="fs-caret" aria-hidden="true">▸</span>Randomization</legend>
+      <div class="fs-body">
       <div class="radio-row" id="randomRadios">
         <label class="radio-opt" data-on="true">
           <input type="radio" name="rnd" value="off" checked>
@@ -133,10 +134,12 @@
           <span><span class="rt">Within each condition</span><br><span class="rd">Randomize samples within defined conditions</span></span>
         </label>
       </div>
+      </div>
     </fieldset>
 
-    <fieldset>
-      <legend>Blanks</legend>
+    <fieldset class="collapsible" id="fsBlanks">
+      <legend><span class="fs-caret" aria-hidden="true">▸</span>Blanks</legend>
+      <div class="fs-body">
       <div class="field row">
         <div><label class="lab" for="blankRack">Blank rack</label><select id="blankRack"></select></div>
         <div><label class="lab" for="blankBracket">Before &amp; after</label><input type="number" id="blankBracket" value="2" min="0" max="48"></div>
@@ -153,6 +156,7 @@
       <div class="field collapsed" id="blankEveryField">
         <label class="lab" for="blankEvery">Blank after every N samples</label>
         <input type="number" id="blankEvery" value="12" min="1" max="96">
+      </div>
       </div>
     </fieldset>
 
@@ -264,13 +268,14 @@
   </div>
 </div>
 
-<script src="js/core.js?v=23"></script>
-<script src="js/naming.js?v=23"></script>
-<script src="js/queue.js?v=23"></script>
-<script src="js/render.js?v=23"></script>
-<script src="js/interactions.js?v=23"></script>
-<script src="js/modal384.js?v=23"></script>
-<script src="js/io.js?v=23"></script>
-<script src="js/main.js?v=23"></script>
+<script src="js/core.js?v=27"></script>
+<script src="js/naming.js?v=27"></script>
+<script src="js/queue.js?v=27"></script>
+<script src="js/render.js?v=27"></script>
+<script src="js/interactions.js?v=27"></script>
+<script src="js/modal384.js?v=27"></script>
+<script src="js/ui.js?v=27"></script>
+<script src="js/io.js?v=27"></script>
+<script src="js/main.js?v=27"></script>
 </body>
 </html>

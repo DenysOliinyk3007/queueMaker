@@ -162,7 +162,7 @@ async function saveText(name, data) {
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
   flash(`↓ "${name}" → your Downloads folder`);
 }
-async function saveCSV() { await saveText(exportName(), currentExport.text); }
+async function saveCSV() { rememberMethods(); await saveText(exportName(), currentExport.text); }
 // empty plate-layout scaffold (same grid the importer reads): header row + rows A–H
 function layoutTemplate() {
   const lines = [',' + COLS.join(',')];
