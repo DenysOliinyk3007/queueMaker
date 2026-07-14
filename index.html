@@ -11,7 +11,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=16">
+  <link rel="stylesheet" href="css/styles.css?v=17">
 </head>
 <body>
 
@@ -39,7 +39,7 @@
     </fieldset>
 
     <fieldset>
-      <legend>Autosampler / LC</legend>
+      <legend>LC</legend>
       <div class="seg" id="lcSeg">
         <button type="button" data-lc="Evosep" aria-pressed="true">Evosep</button>
         <button type="button" data-lc="VanquishNeo" aria-pressed="false">Vanquish Neo</button>
@@ -101,11 +101,10 @@
           <span><span class="rt">Within each condition</span><br><span class="rd">group by condition (whole name); shuffle inside each</span></span>
         </label>
       </div>
-      <div class="hint">Only samples move. Blanks &amp; QCs stay in the order you paint them.</div>
     </fieldset>
 
     <fieldset>
-      <legend>Blanks / washes</legend>
+      <legend>Blanks</legend>
       <div class="field row">
         <div><label class="lab" for="blankRack">Blank rack</label><select id="blankRack"></select></div>
         <div><label class="lab" for="blankBracket">Before &amp; after</label><input type="number" id="blankBracket" value="2" min="0" max="48"></div>
@@ -199,6 +198,6 @@
   </div>
 </main>
 
-<script src="js/app.js?v=16"></script>
+<script src="js/app.js?v=17"></script>
 </body>
 </html>
