@@ -81,3 +81,6 @@ fieldset.collapsible.open .fs-body { display:block; }
 /* ---- stage sections styled like the sidebar blocks (not foldable) ---- */
 fieldset.stage-fs { margin:0 0 16px; }
 fieldset.stage-fs:last-child { margin-bottom:0; }
+
+/* wrapper so a disabled "Add to queue" button can still show its hover tooltip */
+.add-btn-wrap { display:inline-block; }
