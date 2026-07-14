@@ -23,7 +23,7 @@ const $ = id => document.getElementById(id);
 
 // which text fields are remembered between visits (date is intentionally excluded — it resets to today)
 const STORE_KEY = 'queueMaker.settings.v1';
-const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','brukerSep','output_name','blankBracket','blankInterval','blankEvery'];
+const PERSIST_FIELDS = ['instID','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','brukerSep','output_name','blankBracket','blankInterval','blankEvery'];
 
 /* ---------- state (starts empty) ---------- */
 const state = {
@@ -31,7 +31,6 @@ const state = {
   lc: 'Evosep',                                           // autosampler: 'Evosep' | 'VanquishNeo'
   paint: 'sample',                                        // 'sample' | 'blank' | 'qc'
   plates: Array.from({ length: 6 }, () => new Map()),     // wellId -> { type, seq }; length tracks the LC's rack count
-  labels: ['plate1','plate2','plate3','plate4','plate5','plate6'],
   seq: 0,                                                 // monotonic click counter (acquisition order)
   batches: [],                                            // committed queue: [{ cfg, items:[{type,rack,well,label}] }]
   activeRnd: 'off',                                       // currently applied randomization mode
@@ -51,7 +50,7 @@ function val(id) { const el = $(id); return (el.value.trim() || el.placeholder |
 function cfg() {
   return {
     inst: state.inst,
-    instName: val('instName'), instNo: val('instNo'), evosepNo: val('evosepNo'),
+    instID: val('instID'), evosepNo: val('evosepNo'),
     gradientID: val('gradientID'), personalID: val('personalID'), dateID: val('dateID'),
     expID: val('expID'),
     MSmethod: val('MSmethod'), LCmethod: val('LCmethod'), thermoPath: val('ThermoMethodPath'), brukerSep: val('brukerSep'),
@@ -96,7 +95,7 @@ function instMethod(c) {
   return folder ? `${folder}\\${c.MSmethod}` : c.MSmethod;
 }
 // standard prefix up to the personal ID (shared by generated and imported names)
-function prefixHead(c, tag) { return `${c.dateID}_${c.instName}${c.instNo}_Evo${c.evosepNo}_${c.gradientID}_${tag}_${c.personalID}`; }
+function prefixHead(c, tag) { return `${c.dateID}_${c.instID}_Evo${c.evosepNo}_${c.gradientID}_${tag}_${c.personalID}`; }
 function prefix(c, label, tag) { return `${prefixHead(c, tag)}_${fullExp(c, label)}`; }
 function sampleName(c, label, well) { return `${prefix(c, label, SAMPLE_TAG)}_${well}`; }
 function qcName(c, label, well)     { return `${prefix(c, label, QC_TAG)}_QC_${well}`; }
@@ -283,7 +282,6 @@ function slotHTML(i) {
   return `<div class="slot${active ? ' active' : ''}">
     <div class="slot-hd">
       <span class="slot-rack"${badgeStyle}${badgeTitle}>${rackId}</span>
-      <input class="slot-label" type="text" data-label="${i}" value="${escapeAttr(state.labels[i])}" placeholder="label" aria-label="Rack ${rackId} label">
     </div>
     <div class="miniplate">${grid}</div>
     <div class="slot-foot">${foot}</div>
@@ -355,11 +353,16 @@ function updatePreviewOnly() {
   $('stagedInfo').innerHTML = s.total
     ? `<b>${s.total}</b> painted (${parts.join(' · ')}) → will use method <b>${escapeHtml(c.MSmethod)}</b>`
     : 'Nothing painted yet — paint wells, then click Add.';
-  $('addBtn').disabled = !s.total;
 
+  // Experiment ID is required
+  const noExp = !$('expID').value.trim();
+  $('expID').classList.toggle('invalid', noExp);
+  $('expIDwarn').hidden = !noExp;
+
+  $('addBtn').disabled = !s.total || noExp;
   const empty = q.rows.length === 0;
-  $('downloadBtn').disabled = empty;
-  $('copyBtn').disabled = empty;
+  $('downloadBtn').disabled = empty || noExp;
+  $('copyBtn').disabled = empty || noExp;
   $('clearQueueBtn').disabled = empty;
   $('removeLastBtn').disabled = state.batches.length === 0;
   $('moveHereBtn').disabled = lastImportSlot === null;
@@ -368,10 +371,11 @@ function refresh() { renderPlates(); updatePreviewOnly(); }
 
 /* ---------- committed queue actions ---------- */
 function addToQueue() {
+  if (!$('expID').value.trim()) { flash('Enter an Experiment ID first'); return; }
   const items = [];
   const rackLabels = racks();
   state.plates.forEach((wells, i) => {
-    const rack = rackLabels[i], label = state.labels[i];
+    const rack = rackLabels[i], label = '';
     for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label, name: cell.name, cond: cell.cond, nameWell: cell.nameWell });
   });
   if (!items.length) { flash('Paint some wells first'); return; }
@@ -523,11 +527,6 @@ document.addEventListener('pointerup', () => {
   dragRerender(d);
 });
 document.addEventListener('pointercancel', () => { drag = null; clearPreview(); });
-$('rackGrid').addEventListener('input', e => {
-  const el = e.target.closest('input[data-label]'); if (!el) return;
-  state.labels[+el.dataset.label] = el.value.trim();   // keep focus: don't re-render plates
-  updatePreviewOnly();
-});
 
 function clearPainted() { state.plates.forEach(m => m.clear()); lastImportSlot = null; refresh(); }
 $('clearAll').addEventListener('click', clearPainted);
