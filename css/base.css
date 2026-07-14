@@ -37,7 +37,11 @@ input::placeholder { color:var(--ink-faint); }
 .radio-row { display:flex; flex-direction:column; gap:7px; }
 .radio-opt { display:flex; gap:9px; align-items:flex-start; cursor:pointer; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2); }
 .radio-opt[data-on="true"] { border-color:var(--accent); background:var(--accent-bg); }
-.radio-opt input { margin-top:2px; accent-color:var(--accent); }
+.radio-opt input { appearance:none; -webkit-appearance:none; margin:2px 0 0; flex:none; width:16px; height:16px; border:1.5px solid var(--line); border-radius:50%; background:var(--surface); position:relative; cursor:pointer; transition:border-color .12s; }
+.radio-opt input:hover { border-color:var(--accent); }
+.radio-opt input:checked { border-color:var(--accent); }
+.radio-opt input:checked::after { content:""; position:absolute; inset:3px; border-radius:50%; background:var(--accent); }
+.radio-opt input:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
 .radio-opt .rt { font-size:12.5px; font-weight:600; }
 .radio-opt .rd { font-size:11.5px; color:var(--ink-faint); }
 .hint { font-size:11.5px; color:var(--ink-faint); margin-top:6px; }
