@@ -11,11 +11,11 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/theme.css?v=24">
-  <link rel="stylesheet" href="css/base.css?v=24">
-  <link rel="stylesheet" href="css/plate.css?v=24">
-  <link rel="stylesheet" href="css/queue.css?v=24">
-  <link rel="stylesheet" href="css/modal.css?v=24">
+  <link rel="stylesheet" href="css/theme.css?v=23">
+  <link rel="stylesheet" href="css/base.css?v=23">
+  <link rel="stylesheet" href="css/plate.css?v=23">
+  <link rel="stylesheet" href="css/queue.css?v=23">
+  <link rel="stylesheet" href="css/modal.css?v=23">
 </head>
 <body>
 
@@ -54,11 +54,34 @@
     <fieldset>
       <legend>Sample naming</legend>
       <div class="field">
-        <label class="lab" for="instID">Instrument</label><input type="text" id="instID" placeholder="instrument">
+        <label class="lab" for="instID">Instrument</label>
+        <select id="instID">
+          <option>TIMS1</option><option>TIMS2</option><option>TIMS3</option><option>TIMS5</option>
+          <option>OA1</option><option>OA2</option><option selected>OA3</option><option>OA4</option><option>OA5</option>
+          <option>ECL1</option><option>STEL1</option><option>ZENO1</option><option>ZENO2</option><option>ZENO3</option>
+        </select>
       </div>
       <div class="field row">
-        <div><label class="lab" for="evosepNo">Evosep no.</label><input type="text" id="evosepNo" placeholder="1"></div>
-        <div><label class="lab" for="gradientID">Gradient</label><input type="text" id="gradientID" placeholder="gradient"></div>
+        <div><label class="lab" for="evosepNo">Evosep no.</label>
+          <select id="evosepNo">
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option>
+            <option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option>
+          </select>
+        </div>
+        <div><label class="lab" for="gradientID">Gradient</label>
+          <select id="gradientID">
+            <option value="Whisper20">Whisper 20</option>
+            <option value="Whisper40">Whisper 40</option>
+            <option value="Whisper80">Whisper 80</option>
+            <option value="Whisper120">Whisper 120</option>
+            <option value="30SPD">30 SPD</option>
+            <option value="60SPD">60 SPD</option>
+            <option value="100SPD">100 SPD</option>
+            <option value="200SPD">200 SPD</option>
+            <option value="300SPD">300 SPD</option>
+            <option value="500SPD">500 SPD</option>
+          </select>
+        </div>
       </div>
       <div class="field row">
         <div><label class="lab" for="personalID">Personal ID</label><input type="text" id="personalID" placeholder="name-surname"></div>
@@ -95,19 +118,19 @@
       <div class="radio-row" id="randomRadios">
         <label class="radio-opt" data-on="true">
           <input type="radio" name="rnd" value="off" checked>
-          <span><span class="rt">Off</span><br><span class="rd">keep the order you painted</span></span>
+          <span><span class="rt">Off</span><br><span class="rd">Keep the default injection order</span></span>
         </label>
         <label class="radio-opt" data-on="false">
           <input type="radio" name="rnd" value="slot">
-          <span><span class="rt">Within each slot</span><br><span class="rd">shuffle samples within each plate; blanks/QCs stay put</span></span>
+          <span><span class="rt">Within each slot</span><br><span class="rd">Randomize samples within each slot</span></span>
         </label>
         <label class="radio-opt" data-on="false">
           <input type="radio" name="rnd" value="full">
-          <span><span class="rt">Across all slots</span><br><span class="rd">shuffle all samples together</span></span>
+          <span><span class="rt">Across all slots</span><br><span class="rd">Randomize samples across all slots</span></span>
         </label>
         <label class="radio-opt" data-on="false">
           <input type="radio" name="rnd" value="condition">
-          <span><span class="rt">Within each condition</span><br><span class="rd">group by condition (whole name); shuffle inside each</span></span>
+          <span><span class="rt">Within each condition</span><br><span class="rd">Randomize samples within defined conditions</span></span>
         </label>
       </div>
     </fieldset>
@@ -121,17 +144,16 @@
       <div class="field">
         <label class="lab" for="blankInterval">During the run</label>
         <select id="blankInterval">
-          <option value="none">— no blanks between samples —</option>
+          <option value="none">-- No blanks --</option>
           <option value="every">Every N samples</option>
           <option value="between">Between conditions</option>
-          <option value="betweenSlots">Between slots (racks)</option>
+          <option value="betweenSlots">Between slots</option>
         </select>
       </div>
       <div class="field collapsed" id="blankEveryField">
         <label class="lab" for="blankEvery">Blank after every N samples</label>
         <input type="number" id="blankEvery" value="12" min="1" max="96">
       </div>
-      <div class="hint">Auto-blanks cycle positions A1, A2… in the chosen rack. “Between conditions” / “Between slots” group samples first, then put one blank between the groups. Painted blank wells are kept too.</div>
     </fieldset>
 
     <fieldset>
@@ -146,8 +168,8 @@
       <div class="panel-hd">
         <h2>Plate selection <span style="font-weight:400;color:var(--ink-faint);font-size:12px;">— paint a set, then add it to the queue</span></h2>
         <div class="spacer"></div>
-        <button type="button" class="mini-btn" id="translate384Btn">▦ Translate 384-well plate</button>
-        <button type="button" class="mini-btn" id="clearAll">Clear painted</button>
+        <button type="button" class="mini-btn" id="translate384Btn">▦ 384-well plate format</button>
+        <button type="button" class="mini-btn" id="clearAll">Clear all selection</button>
       </div>
       <div class="panel-bd">
         <div class="paint-bar">
@@ -156,7 +178,7 @@
             <button type="button" data-paint="blank" aria-pressed="false"><i class="pdot" style="background:var(--blank)"></i>Blank</button>
             <button type="button" data-paint="qc" aria-pressed="false"><i class="pdot" style="background:var(--qc)"></i>QC</button>
           </div>
-          <span class="instructions">Click a well, or <b>drag to paint a block</b> (drag from a same-type well to erase). <b>Double-click</b> clears all painted wells. Row/column headers fill a line; the ⛶ corner fills/clears the plate.</span>
+          <span class="instructions">Click an individual well, or drag to paint a block. Row/column headers fill a line, the ⛶ button fills the entire slot.</span>
         </div>
         <div class="import-bar">
           <button type="button" class="mini-btn" id="downloadLayoutBtn">⤓ Download layout</button>
@@ -164,7 +186,7 @@
           <span class="import-into">into rack</span>
           <select id="importRack" aria-label="Target rack for import"></select>
           <button type="button" class="mini-btn" id="moveHereBtn" disabled title="Move the most recent import to the selected rack">↔ Move here</button>
-          <span class="import-info" id="importInfo">Download the empty grid, type your names in Excel, save as CSV, then import it. Import different files into different racks — they stack up. Names get your standard prefix; blank/QC detected automatically.</span>
+          <span class="import-info" id="importInfo">Download the default grid, manually enter your preferred sample names and import the resulting file. Import different files into different slots.</span>
         </div>
         <div class="rack-sheet">
           <div class="rack-grid" id="rackGrid"></div>
@@ -173,7 +195,6 @@
           <span class="k"><span class="dot s"></span> Sample</span>
           <span class="k"><span class="dot b"></span> Blank</span>
           <span class="k"><span class="dot q"></span> QC</span>
-          <span class="k" style="color:var(--ink-faint)">Each slot = one autosampler rack</span>
         </div>
         <div class="add-bar">
           <button type="button" class="btn" id="addBtn">➕ Add to queue</button>
@@ -203,7 +224,7 @@
           <span class="spacer" style="flex:1"></span>
           <span class="toast" id="toast">Copied ✓</span>
         </div>
-        <div class="hint" id="saveTip">In Chrome or Edge, <b>Download CSV</b> opens a “Save As” dialog so you can choose the location. Other browsers save straight to your Downloads folder.</div>
+        <div class="hint" id="saveTip">Save your queue</div>
       </div>
     </div>
   </div>
@@ -243,13 +264,13 @@
   </div>
 </div>
 
-<script src="js/core.js?v=24"></script>
-<script src="js/naming.js?v=24"></script>
-<script src="js/queue.js?v=24"></script>
-<script src="js/render.js?v=24"></script>
-<script src="js/interactions.js?v=24"></script>
-<script src="js/modal384.js?v=24"></script>
-<script src="js/io.js?v=24"></script>
-<script src="js/main.js?v=24"></script>
+<script src="js/core.js?v=23"></script>
+<script src="js/naming.js?v=23"></script>
+<script src="js/queue.js?v=23"></script>
+<script src="js/render.js?v=23"></script>
+<script src="js/interactions.js?v=23"></script>
+<script src="js/modal384.js?v=23"></script>
+<script src="js/io.js?v=23"></script>
+<script src="js/main.js?v=23"></script>
 </body>
 </html>
