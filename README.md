@@ -35,15 +35,29 @@ preview the generated queue, and export a ready-to-import CSV.
 
 ```
 queueMaker/
-├── index.html          # markup
-├── css/
-│   └── styles.css      # all styling (Evosep pale-orange theme, light + dark)
-├── js/
-│   └── app.js          # queue logic, plate painting, CSV export
-├── .nojekyll           # serve files as-is on GitHub Pages
+├── index.html                 # markup
+├── css/                       # styling, loaded in order (cascade preserved)
+│   ├── theme.css              #   design tokens + light/dark themes
+│   ├── base.css               #   reset, header, layout, form controls, panels
+│   ├── plate.css              #   paint/import bars, rack sheet, wells, drag
+│   ├── queue.css              #   stats, preview table, export bar, buttons
+│   └── modal.css              #   384 modal, quadrant schema, input states
+├── js/                        # classic scripts, loaded in dependency order
+│   ├── core.js                #   constants, state, cfg, localStorage persistence
+│   ├── naming.js              #   sample-name builders
+│   ├── queue.js               #   ordering, blanks, row/CSV/XML construction
+│   ├── render.js              #   plate + preview rendering, updatePreviewOnly
+│   ├── interactions.js        #   queue actions, instrument/LC/paint, drag-to-paint
+│   ├── modal384.js            #   384-well → 96 quadrant translation modal
+│   ├── io.js                  #   CSV layout import, randomization, file save
+│   └── main.js                #   bootstrap (restore settings, first render)
+├── .nojekyll                  # serve files as-is on GitHub Pages
 ├── .gitignore
 └── README.md
 ```
+
+The scripts share one global scope (they are plain `<script>`s, not ES modules) and
+must stay in the order listed in `index.html`.
 
 > A `python/` folder holds the original pandas implementation
 > (`queueMaker.py`, `notebook.ipynb`). It is **git-ignored** — the web app is

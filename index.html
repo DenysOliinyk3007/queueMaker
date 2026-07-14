@@ -11,7 +11,11 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=22">
+  <link rel="stylesheet" href="css/theme.css?v=23">
+  <link rel="stylesheet" href="css/base.css?v=23">
+  <link rel="stylesheet" href="css/plate.css?v=23">
+  <link rel="stylesheet" href="css/queue.css?v=23">
+  <link rel="stylesheet" href="css/modal.css?v=23">
 </head>
 <body>
 
@@ -31,7 +35,7 @@
   <!-- ====================== CONFIG RAIL ====================== -->
   <form class="rail" id="cfg" autocomplete="off">
     <fieldset>
-      <legend>Instrument</legend>
+      <legend>Instrument ID</legend>
       <div class="seg" id="instSeg">
         <button type="button" data-inst="Thermo" aria-pressed="true">Thermo</button>
         <button type="button" data-inst="Sciex" aria-pressed="false">Sciex</button>
@@ -239,6 +243,13 @@
   </div>
 </div>
 
-<script src="js/app.js?v=22"></script>
+<script src="js/core.js?v=23"></script>
+<script src="js/naming.js?v=23"></script>
+<script src="js/queue.js?v=23"></script>
+<script src="js/render.js?v=23"></script>
+<script src="js/interactions.js?v=23"></script>
+<script src="js/modal384.js?v=23"></script>
+<script src="js/io.js?v=23"></script>
+<script src="js/main.js?v=23"></script>
 </body>
 </html>
