@@ -26,8 +26,11 @@ const state = {
   labels: ['plate1','plate2','plate3','plate4','plate5','plate6'],
   seq: 0,                                                 // monotonic click counter (acquisition order)
   batches: [],                                            // committed queue: [{ cfg, items:[{type,rack,well,label}] }]
+  activeRnd: 'off',                                       // currently applied randomization mode
+  seeds: { slot: 1, full: 1, condition: 1 },              // per-mode shuffle seed (stable until re-clicked)
 };
 function racks() { return LC_CONFIG[state.lc].racks; }    // rack labels for the active LC
+['slot', 'full', 'condition'].forEach(m => state.seeds[m] = (Math.random() * 0x100000000) >>> 0);   // fresh seeds each session
 
 /* ---------- date default ---------- */
 function todayStamp() { const d = new Date(); const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`; }
@@ -71,6 +74,7 @@ function loadSettings() {
   if (data.random) {
     const r = document.querySelector(`input[name="rnd"][value="${data.random}"]`);
     if (r) r.checked = true;
+    state.activeRnd = data.random;
   }
   syncRandomUI();
 }
@@ -91,7 +95,12 @@ function blankName(c, label, n)     { return `${prefix(c, label, SAMPLE_TAG)}_bl
 // imported name = standard prefix + the raw cell text (QC → ADIAMA tag, else SA)
 function customName(c, type, raw) { return `${prefixHead(c, type === 'qc' ? QC_TAG : SAMPLE_TAG)}_${raw}`; }
 
-function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// deterministic PRNG (mulberry32) so a given seed always yields the same shuffle
+function makeRng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function shuffleWith(arr, rnd) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 // a sample's "condition" = its raw imported name (whole name); non-imported wells are each their own
 function conditionKey(it) { return it.cond != null ? it.cond : '#' + it.rack + it.well; }
@@ -100,8 +109,9 @@ function conditionKey(it) { return it.cond != null ? it.cond : '#' + it.rack + i
    mode 'slot'      → shuffle samples within each rack
         'full'      → shuffle all samples together
         'condition' → group by condition (first-appearance order), shuffle within each */
-function orderSamples(seq, mode) {
+function orderSamples(seq, mode, seed) {
   if (mode === 'off') return seq;
+  const rnd = makeRng(seed);
   const out = seq.slice();
   const idx = [];
   seq.forEach((it, i) => { if (it.type === 'sample') idx.push(i); });
@@ -109,7 +119,7 @@ function orderSamples(seq, mode) {
   if (mode === 'slot') {
     const groups = {};
     idx.forEach(i => { (groups[seq[i].rack] = groups[seq[i].rack] || []).push(i); });
-    Object.values(groups).forEach(g => { const sh = shuffle(g.map(i => seq[i])); g.forEach((p, k) => out[p] = sh[k]); });
+    Object.values(groups).forEach(g => { const sh = shuffleWith(g.map(i => seq[i]), rnd); g.forEach((p, k) => out[p] = sh[k]); });
     return out;
   }
 
@@ -118,9 +128,9 @@ function orderSamples(seq, mode) {
     const groups = new Map();                 // preserves first-appearance order of conditions
     idx.forEach(i => { const k = conditionKey(seq[i]); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(seq[i]); });
     ordered = [];
-    groups.forEach(g => ordered.push(...(mode === 'condition' ? shuffle(g) : g)));   // shuffle within, or keep order
+    groups.forEach(g => ordered.push(...(mode === 'condition' ? shuffleWith(g, rnd) : g)));   // shuffle within, or keep order
   } else {   // 'full'
-    ordered = shuffle(idx.map(i => seq[i]));
+    ordered = shuffleWith(idx.map(i => seq[i]), rnd);
   }
   idx.forEach((p, k) => out[p] = ordered[k]);
   return out;
@@ -173,7 +183,7 @@ function buildQueue() {
   const rnd = document.querySelector('input[name="rnd"]:checked').value;
   // "between conditions" blanks only make sense once samples are grouped by condition, so force grouping
   const mode = c.blankInterval === 'between' ? (rnd === 'off' ? 'conditionKeep' : 'condition') : rnd;
-  let sequence = orderSamples(items, mode);
+  let sequence = orderSamples(items, mode, state.seeds[rnd]);
   sequence = insertBlanks(sequence, c);
 
   let sampleCount = 0, qcCount = 0, blankCount = 0, blankSeq = 0;
@@ -588,7 +598,24 @@ $('moveHereBtn').addEventListener('click', () => {
 function syncRandomUI() {
   document.querySelectorAll('#randomRadios .radio-opt').forEach(o => o.dataset.on = o.querySelector('input').checked);
 }
-$('randomRadios').addEventListener('change', () => { syncRandomUI(); updatePreviewOnly(); saveSettings(); });
+function setRnd(mode, reshuffle) {
+  if (reshuffle && mode in state.seeds) state.seeds[mode] = (Math.random() * 0x100000000) >>> 0;   // new order
+  state.activeRnd = mode;
+  const r = document.querySelector(`input[name="rnd"][value="${mode}"]`);
+  if (r && !r.checked) r.checked = true;
+  syncRandomUI(); updatePreviewOnly(); saveSettings();
+}
+// capture the active mode BEFORE the click toggles the radio, so we can tell re-click from switch
+let preClickRnd = null;
+$('randomRadios').addEventListener('mousedown', () => { const r = document.querySelector('input[name="rnd"]:checked'); preClickRnd = r && r.value; });
+$('randomRadios').addEventListener('click', e => {
+  const opt = e.target.closest('.radio-opt'); if (!opt) return;
+  const inp = opt.querySelector('input[name="rnd"]'); if (!inp) return;
+  setRnd(inp.value, inp.value === preClickRnd);   // clicked the already-active mode → reshuffle
+});
+$('randomRadios').addEventListener('change', e => {   // keyboard arrow-key switches (never reshuffle)
+  const inp = e.target.closest('input[name="rnd"]'); if (inp) { state.activeRnd = inp.value; syncRandomUI(); updatePreviewOnly(); }
+});
 $('cfg').addEventListener('input', () => { updatePreviewOnly(); saveSettings(); });
 
 async function saveText(name, data) {
