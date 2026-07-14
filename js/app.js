@@ -114,11 +114,11 @@ function orderSamples(seq, mode) {
   }
 
   let ordered;
-  if (mode === 'condition') {
+  if (mode === 'condition' || mode === 'conditionKeep') {
     const groups = new Map();                 // preserves first-appearance order of conditions
     idx.forEach(i => { const k = conditionKey(seq[i]); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(seq[i]); });
     ordered = [];
-    groups.forEach(g => ordered.push(...shuffle(g)));
+    groups.forEach(g => ordered.push(...(mode === 'condition' ? shuffle(g) : g)));   // shuffle within, or keep order
   } else {   // 'full'
     ordered = shuffle(idx.map(i => seq[i]));
   }
@@ -171,7 +171,9 @@ function buildQueue() {
   state.batches.forEach(b => b.items.forEach(it => items.push({ ...it, cfg: b.cfg })));
 
   const rnd = document.querySelector('input[name="rnd"]:checked').value;
-  let sequence = orderSamples(items, rnd);
+  // "between conditions" blanks only make sense once samples are grouped by condition, so force grouping
+  const mode = c.blankInterval === 'between' ? (rnd === 'off' ? 'conditionKeep' : 'condition') : rnd;
+  let sequence = orderSamples(items, mode);
   sequence = insertBlanks(sequence, c);
 
   let sampleCount = 0, qcCount = 0, blankCount = 0, blankSeq = 0;
