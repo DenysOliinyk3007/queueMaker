@@ -7,7 +7,7 @@ function instMethod(c) {
   return folder ? `${folder}\\${c.MSmethod}` : c.MSmethod;
 }
 // standard prefix up to the personal ID (shared by generated and imported names)
-function prefixHead(c, tag) { return `${c.dateID}_${c.instID}_Evo${c.evosepNo}_${c.gradientID}_${tag}_${c.personalID}`; }
+function prefixHead(c, tag) { return `${c.dateID}_${c.instID}_Eno${c.evosepNo}_${c.gradientID}_${tag}_${c.personalID}`; }
 function prefix(c, label, tag) { return `${prefixHead(c, tag)}_${fullExp(c, label)}`; }
 function sampleName(c, label, well) { return `${prefix(c, label, SAMPLE_TAG)}_${well}`; }
 function qcName(c, label, well)     { return `${prefix(c, label, QC_TAG)}_QC_${well}`; }

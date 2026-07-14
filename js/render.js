@@ -112,7 +112,9 @@ function updatePreviewOnly() {
   $('expID').classList.toggle('invalid', noExp);
   $('expIDwarn').hidden = !noExp;
 
-  $('addBtn').disabled = !s.total || noExp;
+  const addDisabled = !s.total || noExp;
+  $('addBtn').disabled = addDisabled;
+  $('addBtnWrap').title = addDisabled ? 'Paint at least one well and add experiment ID' : '';
   const empty = q.rows.length === 0;
   $('downloadBtn').disabled = empty || noExp;
   $('copyBtn').disabled = empty || noExp;
