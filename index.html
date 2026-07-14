@@ -11,7 +11,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=15">
+  <link rel="stylesheet" href="css/styles.css?v=16">
 </head>
 <body>
 
@@ -122,7 +122,7 @@
         <label class="lab" for="blankEvery">Blank after every N samples</label>
         <input type="number" id="blankEvery" value="12" min="1" max="96">
       </div>
-      <div class="hint">Auto-blanks cycle positions A1, A2… in the chosen rack. Painted blank wells are kept too.</div>
+      <div class="hint">Auto-blanks cycle positions A1, A2… in the chosen rack. “Between conditions” groups samples by condition first, then puts one blank between the groups. Painted blank wells are kept too.</div>
     </fieldset>
 
     <fieldset>
@@ -199,6 +199,6 @@
   </div>
 </main>
 
-<script src="js/app.js?v=15"></script>
+<script src="js/app.js?v=16"></script>
 </body>
 </html>
