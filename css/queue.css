@@ -1,0 +1,28 @@
+.stats { display:flex; gap:12px; flex-wrap:wrap; }
+.stat { background:var(--surface-2); border:1px solid var(--line-soft); border-radius:9px; padding:9px 14px; min-width:70px; }
+.stat .n { font-family:var(--mono); font-size:21px; font-weight:650; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.stat .l { font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); margin-top:1px; }
+.stat.samples .n { color:var(--sample-ink); }
+.stat.qcs .n { color:var(--qc-ink); }
+.stat.blanks .n { color:var(--blank-ink); }
+
+.tbl-wrap { overflow:auto; max-height:460px; border-top:1px solid var(--line-soft); }
+table.q { border-collapse:collapse; width:100%; font-family:var(--mono); font-size:11.5px; }
+table.q th, table.q td { text-align:left; padding:6px 12px; white-space:nowrap; border-bottom:1px solid var(--line-soft); }
+table.q thead th { position:sticky; top:0; background:var(--surface); z-index:1; font-weight:600; color:var(--ink-soft); border-bottom:1px solid var(--line); }
+table.q td.idx { color:var(--ink-faint); text-align:right; }
+table.q tr.is-blank td { background:var(--blank-soft); color:var(--blank-ink); }
+table.q tr.is-qc td { background:var(--qc-soft); color:var(--qc-ink); }
+.bracket-note { font-family:var(--mono); font-size:11.5px; color:var(--accent-ink); background:var(--accent-bg); padding:6px 12px; border-bottom:1px solid var(--line-soft); }
+
+.export-bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.btn { font:inherit; font-size:13.5px; font-weight:600; cursor:pointer; border:1px solid var(--accent); border-radius:8px; padding:9px 18px; background:var(--accent); color:#fff; display:inline-flex; align-items:center; gap:8px; }
+.btn:hover { filter:brightness(.94); }
+.btn:disabled { opacity:.45; cursor:not-allowed; filter:none; }
+.btn.ghost { background:transparent; color:var(--accent-ink); }
+.btn.ghost:hover { background:var(--accent-bg); filter:none; }
+.filename-preview { font-family:var(--mono); font-size:12px; color:var(--ink-faint); }
+.toast { font-size:12.5px; color:var(--accent-ink); font-weight:600; opacity:0; transition:opacity .2s; }
+.toast.show { opacity:1; }
+.namebox { font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); background:var(--surface-2); border:1px solid var(--line-soft); border-radius:7px; padding:8px 10px; word-break:break-all; }
+.namebox b { color:var(--accent-ink); font-weight:600; }

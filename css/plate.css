@@ -1,0 +1,57 @@
+.paint-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.paint-bar .seg { width:280px; flex:none; }
+.paint-bar .instructions { font-size:12px; color:var(--ink-faint); flex:1; min-width:180px; }
+
+.import-bar { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:18px; font-size:12.5px; color:var(--ink-soft); }
+.import-bar .file-btn { cursor:pointer; }
+.import-bar .import-into { color:var(--ink-faint); }
+.import-bar select { font:inherit; font-size:12.5px; padding:5px 7px; width:auto; min-width:56px; flex:0 0 auto; }
+.import-bar .import-info { color:var(--ink-faint); font-size:11.5px; flex:1; min-width:180px; }
+.import-bar .import-info b { color:var(--accent-ink); font-weight:600; }
+
+/* portrait "A4 sheet" holding the 6 Evosep racks — S1-3 down the left column, S4-6 down the right */
+.rack-sheet { max-width:1040px; margin:0 auto; background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:0 4px 22px rgba(43,32,21,.10); padding:22px; }
+.rack-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); grid-template-rows:repeat(3, auto); grid-auto-flow:column; gap:18px; }
+@media (max-width:600px){ .rack-grid { grid-template-columns:1fr; grid-template-rows:none; grid-auto-flow:row; } .rack-sheet { max-width:100%; padding:14px; } }
+
+.slot { border:1px solid var(--line); border-radius:12px; background:var(--surface-2); padding:16px 14px 14px; }
+.slot.active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.slot-hd { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.slot-rack { font-family:var(--mono); font-weight:700; font-size:13px; color:var(--accent-ink); background:var(--accent-bg); border-radius:7px; padding:5px 11px; flex:none; }
+.slot-label { flex:1; min-width:0; font-family:var(--mono); font-size:12px; padding:6px 8px; }
+.slot-foot { margin-top:12px; min-height:15px; font-family:var(--mono); font-size:11.5px; color:var(--ink-faint); }
+.slot-foot b { font-weight:600; } .slot-foot b.s { color:var(--sample-ink); } .slot-foot b.q { color:var(--qc-ink); } .slot-foot b.b { color:var(--blank-ink); }
+
+.miniplate { overflow-x:auto; }
+table.mp { border-collapse:separate; border-spacing:1px; margin:0 auto; line-height:0; user-select:none; }
+table.mp th, table.mp td { padding:0; vertical-align:middle; text-align:center; }
+
+.mp .corner, .mp .hcol, .mp .hrow { border:1px solid var(--line); border-radius:5px; cursor:pointer; font-family:var(--mono); background:var(--surface); color:var(--ink-faint); display:inline-flex; align-items:center; justify-content:center; }
+.mp .hcol { width:28px; height:20px; font-size:9.5px; font-weight:600; }
+.mp .hrow { width:20px; height:28px; font-size:9.5px; font-weight:600; }
+.mp .corner { width:20px; height:20px; }
+.mp .corner::after { content:"⛶"; font-size:11px; color:var(--ink-faint); }
+.mp .hcol:hover, .mp .hrow:hover, .mp .corner:hover { border-color:var(--accent); }
+
+/* well = full-cell square hit area (so the space between circles is draggable too),
+   with the visible circle drawn as an inner ::before */
+.mp .well { width:28px; height:28px; cursor:pointer; touch-action:none; background:transparent; display:inline-flex; align-items:center; justify-content:center; }
+.mp .well::before { content:""; box-sizing:border-box; width:24px; height:24px; border-radius:50%; border:1px solid var(--line); background:var(--surface); }
+.mp .well:hover::before { border-color:var(--accent); }
+.mp .well.sample::before { background:var(--sample); border-color:var(--sample); }
+.mp .well.blank::before  { background:var(--blank);  border-color:var(--blank); }
+.mp .well.qc::before     { background:var(--qc);     border-color:var(--qc); }
+.mp .well.named::before      { box-shadow: inset 0 0 0 2px rgba(255,255,255,.72); }
+.mp .well.drag-paint::before { box-shadow: inset 0 0 0 2px var(--accent); }
+.mp .well.drag-erase::before { box-shadow: inset 0 0 0 2px var(--danger); }
+
+.add-bar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:28px; padding-top:20px; border-top:1px solid var(--line-soft); }
+.add-info { font-size:12.5px; color:var(--ink-faint); }
+.add-info b { color:var(--accent-ink); font-weight:600; }
+
+.legend-key { display:flex; gap:16px; font-size:12px; color:var(--ink-soft); align-items:center; flex-wrap:wrap; margin-top:16px; }
+.legend-key .k { display:inline-flex; align-items:center; gap:6px; }
+.dot { width:12px; height:12px; border-radius:4px; border:1px solid var(--line); }
+.dot.s { background:var(--sample); border-color:var(--sample); }
+.dot.b { background:var(--blank); border-color:var(--blank); }
+.dot.q { background:var(--qc); border-color:var(--qc); }
