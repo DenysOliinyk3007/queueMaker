@@ -43,7 +43,7 @@ function initCombo(id) {
     listEl.innerHTML = items.map(m =>
       `<div class="combo-item" data-val="${escapeAttr(m)}"><span class="combo-name" title="${escapeAttr(m)}">${escapeHtml(m)}</span>` +
       `<button type="button" class="combo-del" title="Delete this saved method" aria-label="Delete">${TRASH_SVG}</button></div>`).join('');
-    emptyEl.textContent = all.length === 0 ? 'No saved methods yet — type one; it’s saved when you download.' : (items.length === 0 ? 'No match.' : '');
+    emptyEl.textContent = all.length === 0 ? 'No saved items yet — type one; it’s saved when you download.' : (items.length === 0 ? 'No match.' : '');
     emptyEl.hidden = items.length !== 0;
   }
   function open(focusSearch) { render(); panel.hidden = false; wrap.classList.add('open'); if (focusSearch) searchEl.focus(); }
@@ -72,7 +72,7 @@ function saveCollapse() {
 function setupCollapse() {
   let saved = {}; try { saved = JSON.parse(localStorage.getItem('queueMaker.collapse') || '{}'); } catch (e) {}
   document.querySelectorAll('fieldset.collapsible').forEach(fs => {
-    if (saved[fs.id]) fs.classList.add('open');
+    if (fs.id in saved) fs.classList.toggle('open', !!saved[fs.id]);   // remembered state wins; else HTML default
     fs.querySelector('legend').addEventListener('click', () => { fs.classList.toggle('open'); saveCollapse(); });
   });
 }
