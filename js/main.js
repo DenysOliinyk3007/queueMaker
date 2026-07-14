@@ -3,4 +3,6 @@ loadSettings();   // restore the user's previous inputs (if any) before first re
 populateImportRack();
 populateBlankRack();
 populateQuadrantMap();
+['MSmethod', 'ThermoMethodPath', 'LCmethod', 'brukerSep'].forEach(initCombo);   // searchable method dropdowns
+setupCollapse();   // collapsible Randomization / Blanks
 refresh();
