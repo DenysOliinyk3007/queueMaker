@@ -11,7 +11,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=17">
+  <link rel="stylesheet" href="css/styles.css?v=19">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
     <div class="glyph" aria-hidden="true"></div>
     <div>
       <h1>Queue Maker</h1>
-      <div class="sub">MS acquisition queue builder</div>
+      <div class="sub">Build your MS queue</div>
     </div>
   </div>
   <div class="spacer"></div>
@@ -115,13 +115,14 @@
           <option value="none">— no blanks between samples —</option>
           <option value="every">Every N samples</option>
           <option value="between">Between conditions</option>
+          <option value="betweenSlots">Between slots (racks)</option>
         </select>
       </div>
       <div class="field collapsed" id="blankEveryField">
         <label class="lab" for="blankEvery">Blank after every N samples</label>
         <input type="number" id="blankEvery" value="12" min="1" max="96">
       </div>
-      <div class="hint">Auto-blanks cycle positions A1, A2… in the chosen rack. “Between conditions” groups samples by condition first, then puts one blank between the groups. Painted blank wells are kept too.</div>
+      <div class="hint">Auto-blanks cycle positions A1, A2… in the chosen rack. “Between conditions” / “Between slots” group samples first, then put one blank between the groups. Painted blank wells are kept too.</div>
     </fieldset>
 
     <fieldset>
@@ -136,6 +137,7 @@
       <div class="panel-hd">
         <h2>Plate selection <span style="font-weight:400;color:var(--ink-faint);font-size:12px;">— paint a set, then add it to the queue</span></h2>
         <div class="spacer"></div>
+        <button type="button" class="mini-btn" id="translate384Btn">▦ Translate 384-well plate</button>
         <button type="button" class="mini-btn" id="clearAll">Clear painted</button>
       </div>
       <div class="panel-bd">
@@ -198,6 +200,34 @@
   </div>
 </main>
 
-<script src="js/app.js?v=17"></script>
+<!-- ====================== 384-WELL TRANSLATION MODAL ====================== -->
+<div class="modal-backdrop" id="modal384" hidden>
+  <div class="modal">
+    <div class="modal-hd">
+      <h2>384-well plate → 96-well racks <span style="font-weight:400;color:var(--ink-faint);font-size:12.5px;">· collapse per quadrant</span></h2>
+      <div class="spacer"></div>
+      <button type="button" class="theme-btn" id="close384">✕ Close</button>
+    </div>
+    <div class="modal-bd">
+      <div class="paint-bar">
+        <div class="seg paint" id="paintSeg384">
+          <button type="button" data-paint="sample" aria-pressed="true"><i class="pdot" style="background:var(--sample)"></i>Sample</button>
+          <button type="button" data-paint="blank" aria-pressed="false"><i class="pdot" style="background:var(--blank)"></i>Blank</button>
+          <button type="button" data-paint="qc" aria-pressed="false"><i class="pdot" style="background:var(--qc)"></i>QC</button>
+        </div>
+        <span class="instructions">Paint wells (click / drag a block / row-column headers). On translate, quadrants map <b>Q1→rack 1, Q2→rack 2, Q3→rack 3, Q4→rack 4</b>, and each name gets its quadrant (<span style="font-family:var(--mono)">Q1_A1</span>) so File Names stay unique.</span>
+      </div>
+      <div class="plate384-wrap"><div id="plate384grid"></div></div>
+      <div class="modal-ft">
+        <span class="import-info" id="plate384info"></span>
+        <span class="spacer" style="flex:1"></span>
+        <button type="button" class="mini-btn" id="clear384">Clear</button>
+        <button type="button" class="btn" id="translate384">Translate to racks →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js?v=19"></script>
 </body>
 </html>

@@ -2,6 +2,14 @@
 
 const ROWS = ['A','B','C','D','E','F','G','H'];
 const COLS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+const ROWS384 = 'ABCDEFGHIJKLMNOP'.split('');                        // 16 rows A–P
+const COLS384 = Array.from({ length: 24 }, (_, i) => String(i + 1)); // 24 columns
+// map a 384 well (row/col index) to its quadrant (1–4) and 96-well position (standard interleave)
+function to96(rIdx, cIdx) {
+  const q = (rIdx % 2) * 2 + (cIdx % 2) + 1;                         // Q1 odd/odd, Q2 odd/even, Q3 even/odd, Q4 even/even
+  const well96 = ROWS[Math.floor(rIdx / 2)] + (Math.floor(cIdx / 2) + 1);
+  return { q, well96 };
+}
 // autosampler / LC configs: rack labels + Sciex rack/plate type strings
 const LC_CONFIG = {
   Evosep:      { racks: ['S1','S2','S3','S4','S5','S6'], rackType: 'Evosep One tray',    plateType: '96 Evotip box' },
@@ -28,6 +36,7 @@ const state = {
   batches: [],                                            // committed queue: [{ cfg, items:[{type,rack,well,label}] }]
   activeRnd: 'off',                                       // currently applied randomization mode
   seeds: { slot: 1, full: 1, condition: 1 },              // per-mode shuffle seed (stable until re-clicked)
+  plate384: new Map(),                                    // 384-well modal selection: wellId -> { type, seq }
 };
 function racks() { return LC_CONFIG[state.lc].racks; }    // rack labels for the active LC
 ['slot', 'full', 'condition'].forEach(m => state.seeds[m] = (Math.random() * 0x100000000) >>> 0);   // fresh seeds each session
@@ -124,11 +133,13 @@ function orderSamples(seq, mode, seed) {
   }
 
   let ordered;
-  if (mode === 'condition' || mode === 'conditionKeep') {
-    const groups = new Map();                 // preserves first-appearance order of conditions
-    idx.forEach(i => { const k = conditionKey(seq[i]); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(seq[i]); });
+  if (mode === 'condition' || mode === 'conditionKeep' || mode === 'slotGroup' || mode === 'slotKeep') {
+    const bySlot = mode === 'slotGroup' || mode === 'slotKeep';
+    const shuffleWithin = mode === 'condition' || mode === 'slotGroup';
+    const groups = new Map();                 // preserves first-appearance order of groups
+    idx.forEach(i => { const k = bySlot ? seq[i].rack : conditionKey(seq[i]); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(seq[i]); });
     ordered = [];
-    groups.forEach(g => ordered.push(...(mode === 'condition' ? shuffleWith(g, rnd) : g)));   // shuffle within, or keep order
+    groups.forEach(g => ordered.push(...(shuffleWithin ? shuffleWith(g, rnd) : g)));   // shuffle within, or keep order
   } else {   // 'full'
     ordered = shuffleWith(idx.map(i => seq[i]), rnd);
   }
@@ -151,6 +162,12 @@ function insertBlanks(seq, c) {
     let prev = null;
     for (const it of seq) {
       if (it.type === 'sample') { const k = conditionKey(it); if (prev !== null && k !== prev) out.push(nextBlank()); prev = k; }
+      out.push(it);
+    }
+  } else if (c.blankInterval === 'betweenSlots') {
+    let prev = null;
+    for (const it of seq) {
+      if (it.type === 'sample') { if (prev !== null && it.rack !== prev) out.push(nextBlank()); prev = it.rack; }
       out.push(it);
     }
   } else {
@@ -181,8 +198,10 @@ function buildQueue() {
   state.batches.forEach(b => b.items.forEach(it => items.push({ ...it, cfg: b.cfg })));
 
   const rnd = document.querySelector('input[name="rnd"]:checked').value;
-  // "between conditions" blanks only make sense once samples are grouped by condition, so force grouping
-  const mode = c.blankInterval === 'between' ? (rnd === 'off' ? 'conditionKeep' : 'condition') : rnd;
+  // "between …" blanks only make sense once samples are grouped, so force the matching grouping
+  const mode = c.blankInterval === 'between'      ? (rnd === 'off' ? 'conditionKeep' : 'condition')
+             : c.blankInterval === 'betweenSlots' ? (rnd === 'off' ? 'slotKeep' : 'slotGroup')
+             : rnd;
   let sequence = orderSamples(items, mode, state.seeds[rnd]);
   sequence = insertBlanks(sequence, c);
 
@@ -191,10 +210,11 @@ function buildQueue() {
   const rows = sequence.map(it => {
     if (it.type === 'sample') sampleCount++; else if (it.type === 'qc') qcCount++; else blankCount++;
     usedRacks.add(it.rack);
+    const nameWell = it.nameWell || it.well;   // "Q1_A1" for translated wells, else the plain well
     const name = it.name ? customName(it.cfg, it.type, it.name)
               : it.type === 'blank' ? blankName(it.cfg, it.label, blankSeq++)
-              : it.type === 'qc'    ? qcName(it.cfg, it.label, it.well)
-              :                       sampleName(it.cfg, it.label, it.well);
+              : it.type === 'qc'    ? qcName(it.cfg, it.label, nameWell)
+              :                       sampleName(it.cfg, it.label, nameWell);
     return { cells: mkRow(it.cfg, inst, name, it.rack, it.well), type: it.type };
   });
 
@@ -331,11 +351,11 @@ function addToQueue() {
   const rackLabels = racks();
   state.plates.forEach((wells, i) => {
     const rack = rackLabels[i], label = state.labels[i];
-    for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label, name: cell.name, cond: cell.cond });
+    for (const [well, cell] of wells) items.push({ type: cell.type, seq: cell.seq, rack, well, label, name: cell.name, cond: cell.cond, nameWell: cell.nameWell });
   });
   if (!items.length) { flash('Paint some wells first'); return; }
   items.sort((a, b) => a.seq - b.seq);   // click order within this batch
-  const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label, name, cond }) => ({ type, rack, well, label, name, cond })) };
+  const batch = { cfg: cfg(), items: items.map(({ type, rack, well, label, name, cond, nameWell }) => ({ type, rack, well, label, name, cond, nameWell })) };
   state.batches.push(batch);
   state.plates.forEach(m => m.clear());   // clear staging for the next set
   lastImportSlot = null;
@@ -375,14 +395,17 @@ $('lcSeg').addEventListener('click', e => {
   rebuildPlates();   // clears staged wells (rack counts differ)
   refresh(); saveSettings();
 });
-$('paintSeg').addEventListener('click', e => {
-  const b = e.target.closest('button[data-paint]'); if (!b) return;
-  state.paint = b.dataset.paint;
-  document.querySelectorAll('#paintSeg button').forEach(x => x.setAttribute('aria-pressed', x === b));
-});
+function setPaint(mode) {
+  state.paint = mode;
+  document.querySelectorAll('#paintSeg button, #paintSeg384 button').forEach(x => x.setAttribute('aria-pressed', x.dataset.paint === mode));
+}
+$('paintSeg').addEventListener('click', e => { const b = e.target.closest('button[data-paint]'); if (b) setPaint(b.dataset.paint); });
+$('paintSeg384').addEventListener('click', e => { const b = e.target.closest('button[data-paint]'); if (b) setPaint(b.dataset.paint); });
 
 // set a well's type; new wells get the next click number, re-painted wells keep their place
-function setWell(map, id, type) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq, name: cur ? cur.name : undefined, cond: cur ? cur.cond : undefined }); }
+function setWell(map, id, type) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq, name: cur ? cur.name : undefined, cond: cur ? cur.cond : undefined, nameWell: cur ? cur.nameWell : undefined }); }
+// used by the 384 translation: like setWell but stamps a naming suffix (e.g. "Q1_A1")
+function setNamedWell(map, id, type, nameWell) { const cur = map.get(id); map.set(id, { type, seq: cur ? cur.seq : ++state.seq, name: undefined, cond: undefined, nameWell }); }
 function paintWell(map, id) { const cur = map.get(id); if (cur && cur.type === state.paint) map.delete(id); else setWell(map, id, state.paint); }
 function bulkPaint(map, ids) {
   const allCurrent = ids.every(id => { const c = map.get(id); return c && c.type === state.paint; });
@@ -400,72 +423,81 @@ $('rackGrid').addEventListener('click', e => {
   refresh();
 });
 
-/* ---------- drag-to-paint a rectangular block of wells ---------- */
-let drag = null;   // { plate, r0, c0, r1, c1, erasing, moved }
-const cellRC = id => [ROWS.indexOf(id[0]), COLS.indexOf(id.slice(1))];
+/* ---------- drag-to-paint a rectangular block of wells (works on the racks and the 384 modal) ---------- */
+let drag = null;
+// grid context for a well element: which container, coordinate lists, and target Map
+function gridCtx(el) {
+  if (el.closest('#rackGrid')) return { gridEl: $('rackGrid'), rows: ROWS, cols: COLS, is384: false };
+  if (el.closest('#plate384grid')) return { gridEl: $('plate384grid'), rows: ROWS384, cols: COLS384, is384: true };
+  return null;
+}
+const cellRC = (id, rows, cols) => [rows.indexOf(id[0]), cols.indexOf(id.slice(1))];
 function wellUnder(e) {
   let el = (document.elementFromPoint && document.elementFromPoint(e.clientX, e.clientY)) || null;
   el = el && el.closest ? el.closest('[data-well]') : null;
   if (!el && e.target && e.target.closest) el = e.target.closest('[data-well]');   // fallback (fast moves / headless)
   return el;
 }
-function rectBounds(d) {
-  return [Math.min(d.r0, d.r1), Math.max(d.r0, d.r1), Math.min(d.c0, d.c1), Math.max(d.c0, d.c1)];
-}
+function rectBounds(d) { return [Math.min(d.r0, d.r1), Math.max(d.r0, d.r1), Math.min(d.c0, d.c1), Math.max(d.c0, d.c1)]; }
 function paintPreview() {
   clearPreview();
   if (!drag) return;
   const [rA, rB, cA, cB] = rectBounds(drag);
   const cls = drag.erasing ? 'drag-erase' : 'drag-paint';
   for (let r = rA; r <= rB; r++) for (let c = cA; c <= cB; c++) {
-    const el = $('rackGrid').querySelector(`[data-plate="${drag.plate}"][data-well="${ROWS[r] + COLS[c]}"]`);
+    const id = drag.rows[r] + drag.cols[c];
+    const sel = drag.is384 ? `[data-well="${id}"]` : `[data-plate="${drag.plate}"][data-well="${id}"]`;
+    const el = drag.gridEl.querySelector(sel);
     if (el) el.classList.add(cls);
   }
 }
-function clearPreview() {
-  $('rackGrid').querySelectorAll('.drag-paint, .drag-erase').forEach(el => el.classList.remove('drag-paint', 'drag-erase'));
-}
-let lastTap = { t: 0, key: '' };   // for detecting a double-click on a well (survives re-render)
-$('rackGrid').addEventListener('pointerdown', e => {
+function clearPreview() { document.querySelectorAll('.drag-paint, .drag-erase').forEach(el => el.classList.remove('drag-paint', 'drag-erase')); }
+function dragMap(d) { return d.is384 ? state.plate384 : state.plates[+d.plate]; }
+function dragRerender(d) { if (d.is384) render384(); else refresh(); }
+
+let lastTap = { t: 0, key: '' };   // detect a double-click on a well (survives re-render)
+document.addEventListener('pointerdown', e => {
   const el = e.target.closest('[data-well]'); if (!el) return;
+  const ctx = gridCtx(el); if (!ctx) return;
   e.preventDefault();
-  const plate = +el.dataset.plate;
+  const plate = el.dataset.plate;
   const key = plate + ':' + el.dataset.well;
   const now = Date.now();
-  if (now - lastTap.t < 350 && lastTap.key === key) {   // double-click a well → clear all painted wells
+  if (now - lastTap.t < 350 && lastTap.key === key) {   // double-click a well → clear that plate's painted wells
     lastTap = { t: 0, key: '' };
     drag = null; clearPreview();
-    clearPainted();
+    if (ctx.is384) clear384(); else clearPainted();
     return;
   }
   lastTap = { t: now, key };
-  const [r, c] = cellRC(el.dataset.well);
-  const cur = state.plates[plate].get(el.dataset.well);
-  drag = { plate, r0: r, c0: c, r1: r, c1: c, erasing: !!(cur && cur.type === state.paint), moved: false };
+  const [r, c] = cellRC(el.dataset.well, ctx.rows, ctx.cols);
+  const cur = (ctx.is384 ? state.plate384 : state.plates[+plate]).get(el.dataset.well);
+  drag = { plate, r0: r, c0: c, r1: r, c1: c, erasing: !!(cur && cur.type === state.paint), moved: false, rows: ctx.rows, cols: ctx.cols, gridEl: ctx.gridEl, is384: ctx.is384 };
   paintPreview();
 });
 document.addEventListener('pointermove', e => {
   if (!drag) return;
-  const el = wellUnder(e);
-  if (!el || +el.dataset.plate !== drag.plate) return;   // stay within the anchor plate
-  const [r, c] = cellRC(el.dataset.well);
+  const el = wellUnder(e); if (!el) return;
+  const ctx = gridCtx(el); if (!ctx || ctx.is384 !== drag.is384) return;   // stay within the anchor grid
+  if (!drag.is384 && el.dataset.plate !== drag.plate) return;              // and within the anchor rack
+  const [r, c] = cellRC(el.dataset.well, drag.rows, drag.cols);
   if (r !== drag.r1 || c !== drag.c1) { drag.r1 = r; drag.c1 = c; drag.moved = true; paintPreview(); }
 });
 document.addEventListener('pointerup', () => {
   if (!drag) return;
   const d = drag; drag = null;
   clearPreview();
-  const map = state.plates[d.plate];
+  const map = dragMap(d);
   if (!d.moved) {
-    paintWell(map, ROWS[d.r0] + COLS[d.c0]);   // no drag → single-well toggle
+    paintWell(map, d.rows[d.r0] + d.cols[d.c0]);   // no drag → single-well toggle
   } else {
     const [rA, rB, cA, cB] = rectBounds(d);
     for (let r = rA; r <= rB; r++) for (let c = cA; c <= cB; c++) {
-      const id = ROWS[r] + COLS[c];
+      const id = d.rows[r] + d.cols[c];
       if (d.erasing) map.delete(id); else setWell(map, id, state.paint);
     }
   }
-  refresh();
+  dragRerender(d);
 });
 document.addEventListener('pointercancel', () => { drag = null; clearPreview(); });
 $('rackGrid').addEventListener('input', e => {
@@ -480,6 +512,60 @@ $('rackGrid').addEventListener('dblclick', clearPainted);   // double-click gaps
 $('addBtn').addEventListener('click', addToQueue);
 $('removeLastBtn').addEventListener('click', removeLastBatch);
 $('clearQueueBtn').addEventListener('click', clearQueue);
+
+/* ---------- 384-well plate modal + quadrant translation ---------- */
+function render384() {
+  const wells = state.plate384;
+  let grid = '<table class="mp mp384"><thead><tr><th><div class="corner" data-plate="384" data-corner="1" title="Fill / clear plate"></div></th>';
+  for (const col of COLS384) grid += `<th><div class="hcol" data-plate="384" data-col="${col}">${col}</div></th>`;
+  grid += '</tr></thead><tbody>';
+  for (const row of ROWS384) {
+    grid += `<tr><th><div class="hrow" data-plate="384" data-row="${row}">${row}</div></th>`;
+    for (const col of COLS384) {
+      const id = row + col, cell = wells.get(id), type = cell && cell.type;
+      grid += `<td><div class="well${type ? ' ' + type : ''}" data-plate="384" data-well="${id}" title="${id}"></div></td>`;
+    }
+    grid += '</tr>';
+  }
+  grid += '</tbody></table>';
+  $('plate384grid').innerHTML = grid;
+  let ns = 0, nq = 0, nb = 0; for (const v of wells.values()) v.type === 'blank' ? nb++ : v.type === 'qc' ? nq++ : ns++;
+  const parts = [ns && `<b>${ns}</b> samples`, nq && `<b>${nq}</b> QC`, nb && `<b>${nb}</b> blanks`].filter(Boolean).join(' · ');
+  $('plate384info').innerHTML = wells.size ? `${parts} selected` : 'Paint wells (click / drag / row-column headers), then Translate.';
+}
+function clear384() { state.plate384.clear(); render384(); }
+$('plate384grid').addEventListener('click', e => {
+  const el = e.target.closest('[data-plate="384"]'); if (!el) return;
+  const map = state.plate384;
+  if (el.dataset.row) bulkPaint(map, COLS384.map(c => el.dataset.row + c));
+  else if (el.dataset.col) bulkPaint(map, ROWS384.map(r => r + el.dataset.col));
+  else if (el.dataset.corner) bulkPaint(map, ROWS384.flatMap(r => COLS384.map(c => r + c)));
+  else return;
+  render384();
+});
+function translate384() {
+  if (!state.plate384.size) { flash('Paint some wells on the 384 plate first'); return; }
+  const rackLabels = racks();
+  const summary = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  for (const [id, cell] of state.plate384) {
+    const rIdx = ROWS384.indexOf(id[0]), cIdx = COLS384.indexOf(id.slice(1));
+    const { q, well96 } = to96(rIdx, cIdx);
+    if (q - 1 >= rackLabels.length) continue;                       // not enough racks (won't happen: 4 ≤ racks)
+    setNamedWell(state.plates[q - 1], well96, cell.type, `Q${q}_${well96}`);
+    summary[q]++;
+  }
+  closeModal();
+  refresh();
+  flash('Translated → ' + [1, 2, 3, 4].filter(q => summary[q]).map(q => `${rackLabels[q - 1]} Q${q}:${summary[q]}`).join('  '));
+}
+function openModal() { $('modal384').hidden = false; setPaint(state.paint); render384(); }
+function closeModal() { $('modal384').hidden = true; }
+$('translate384Btn').addEventListener('click', openModal);
+$('close384').addEventListener('click', closeModal);
+$('clear384').addEventListener('click', clear384);
+$('translate384').addEventListener('click', translate384);
+$('modal384').addEventListener('click', e => { if (e.target === $('modal384')) closeModal(); });   // backdrop click
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal384').hidden) closeModal(); });
 
 /* ---------- import a plate-layout CSV (well grid → names) ---------- */
 function splitCSVLine(line, delim) {
