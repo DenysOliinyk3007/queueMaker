@@ -194,3 +194,23 @@ table.q tr.is-qc td { background:var(--qc-soft); color:var(--qc-ink); }
 .toast.show { opacity:1; }
 .namebox { font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); background:var(--surface-2); border:1px solid var(--line-soft); border-radius:7px; padding:8px 10px; word-break:break-all; }
 .namebox b { color:var(--accent-ink); font-weight:600; }
+
+/* ---- 384-well translation modal ---- */
+.modal-backdrop { position:fixed; inset:0; background:rgba(20,14,8,.55); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50; }
+.modal-backdrop[hidden] { display:none; }
+.modal { background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:0 12px 48px rgba(0,0,0,.4); max-width:min(1100px,96vw); max-height:92vh; overflow:auto; display:flex; flex-direction:column; }
+.modal-hd { display:flex; align-items:center; gap:12px; padding:16px 22px; border-bottom:1px solid var(--line-soft); position:sticky; top:0; background:var(--surface); z-index:1; }
+.modal-hd h2 { font-size:15px; }
+.modal-hd .spacer { flex:1; }
+.modal-bd { padding:20px 22px 22px; }
+.modal-ft { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
+.plate384-wrap { overflow:auto; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:10px; padding:16px; }
+
+/* compact wells so 24 columns fit */
+.mp384 { border-spacing:2px; }
+.mp384 .hcol { width:19px; height:16px; font-size:8px; }
+.mp384 .hrow { width:16px; height:19px; font-size:8px; }
+.mp384 .corner { width:16px; height:16px; }
+.mp384 .corner::after { font-size:9px; }
+.mp384 .well { width:19px; height:19px; }
+.mp384 .well::before { width:15px; height:15px; }
