@@ -23,7 +23,7 @@ const $ = id => document.getElementById(id);
 
 // which text fields are remembered between visits (date is intentionally excluded — it resets to today)
 const STORE_KEY = 'queueMaker.settings.v1';
-const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','output_name','blankBracket','blankInterval','blankEvery'];
+const PERSIST_FIELDS = ['instName','instNo','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','brukerSep','output_name','blankBracket','blankInterval','blankEvery'];
 
 /* ---------- state (starts empty) ---------- */
 const state = {
@@ -54,7 +54,7 @@ function cfg() {
     instName: val('instName'), instNo: val('instNo'), evosepNo: val('evosepNo'),
     gradientID: val('gradientID'), personalID: val('personalID'), dateID: val('dateID'),
     expID: val('expID'),
-    MSmethod: val('MSmethod'), LCmethod: val('LCmethod'), thermoPath: val('ThermoMethodPath'),
+    MSmethod: val('MSmethod'), LCmethod: val('LCmethod'), thermoPath: val('ThermoMethodPath'), brukerSep: val('brukerSep'),
     random: document.querySelector('input[name="rnd"]:checked').value,   // 'off' | 'slot' | 'full' | 'condition'
     outputName: ($('output_name').value.trim() || 'queue.csv'),
     lc: state.lc,
@@ -78,7 +78,7 @@ function loadSettings() {
   try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return; }
   if (!data) return;
   if (data.fields) PERSIST_FIELDS.forEach(id => { if (data.fields[id] != null) $(id).value = data.fields[id]; });
-  setInstrument(data.inst === 'Sciex' ? 'Sciex' : 'Thermo');
+  setInstrument(['Thermo', 'Sciex', 'Bruker'].includes(data.inst) ? data.inst : 'Thermo');
   setLC(data.lc || 'Evosep');
   if (data.random) {
     const r = document.querySelector(`input[name="rnd"][value="${data.random}"]`);
@@ -181,17 +181,17 @@ function insertBlanks(seq, c) {
 // rack is the full rack label ("S1" for Evosep, "R"/"G"/"B"/"Y" for Vanquish Neo)
 function mkRow(cfg, inst, name, rack, well) {
   const lcCfg = LC_CONFIG[cfg.lc] || LC_CONFIG.Evosep;
-  return inst === 'Thermo'
-    ? [name, 'D:\\', instMethod(cfg), `${rack}:${well}`]
-    : [name, cfg.MSmethod, cfg.LCmethod, lcCfg.rackType, `${rack}`, lcCfg.plateType, 'Default', well, name];
+  if (inst === 'Thermo') return [name, 'D:\\', instMethod(cfg), `${rack}:${well}`];
+  if (inst === 'Bruker') return [`${rack}-${well}`, name, '', cfg.brukerSep, 'Standard', cfg.MSmethod, ''];   // Vial, Sample ID, Method Set, Separation, Injection, MS, Processing
+  return [name, cfg.MSmethod, cfg.LCmethod, lcCfg.rackType, `${rack}`, lcCfg.plateType, 'Default', well, name];   // Sciex
 }
 
 /* ---------- build queue from the committed batches ---------- */
 function buildQueue() {
   const inst = state.inst;
-  const columns = inst === 'Thermo'
-    ? ['File Name','Path','Instrument Method','Position']
-    : ['Sample Name','MS Method','LC Method','Rack Type','Rack Position','Plate Type','Plate Position','Vial Position','Data File'];
+  const columns = inst === 'Thermo' ? ['File Name','Path','Instrument Method','Position']
+                : inst === 'Bruker' ? ['Vial','Sample ID','Method Set','Separation Method','Injection Method','MS Method','Processing Method']
+                : ['Sample Name','MS Method','LC Method','Rack Type','Rack Position','Plate Type','Plate Position','Vial Position','Data File'];
 
   const c = cfg();   // global config: blank settings + naming for auto-blanks
   const items = [];  // flatten batches in add order; each item carries its batch's cfg + condition
@@ -221,7 +221,7 @@ function buildQueue() {
   return { columns, rows, sampleCount, qcCount, blankCount, platesUsed: usedRacks.size, batchCount: state.batches.length };
 }
 
-/* ---------- CSV ---------- */
+/* ---------- CSV (Thermo/Sciex) ---------- */
 function csvCell(v) { const s = String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function toCSV(q) {
   const lines = [];
@@ -229,6 +229,22 @@ function toCSV(q) {
   lines.push(q.columns.map(csvCell).join(','));
   for (const r of q.rows) lines.push(r.cells.map(csvCell).join(','));
   return lines.join('\r\n') + '\r\n';
+}
+/* ---------- SpreadsheetML XML (Bruker HyStar SampleTable) ---------- */
+function xmlEsc(v) { return String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function toXML(q) {
+  const row = cells => '  <Row>' + cells.map(v => `<Cell><Data ss:Type="String">${xmlEsc(v)}</Data></Cell>`).join('') + '</Row>';
+  const body = [q.columns, ...q.rows.map(r => r.cells)].map(row).join('\n');
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Worksheet ss:Name="SampleTable">
+  <Table>
+${body}
+  </Table>
+ </Worksheet>
+</Workbook>
+`;
 }
 
 /* ---------- render plates ---------- */
@@ -314,16 +330,21 @@ function stagedCounts() {
   return { ns, nq, nb, total: ns + nq + nb };
 }
 
-let currentCSV = '';
+let currentExport = { text: '', ext: 'csv' };   // Bruker → XML, others → CSV
 let lastImportSlot = null;   // rack index of the most recent not-yet-added import (for relocation)
+function exportName() {
+  const base = ((cfg().outputName || 'queue').replace(/\.(csv|xml|xls|txt)$/i, '')) || 'queue';
+  return base + '.' + currentExport.ext;
+}
 function updatePreviewOnly() {
   const c = cfg();
   const q = buildQueue();
-  currentCSV = toCSV(q);
+  currentExport = c.inst === 'Bruker' ? { text: toXML(q), ext: 'xml' } : { text: toCSV(q), ext: 'csv' };
   renderTable(q); renderStats(q);
   $('bracketNote').style.display = c.inst === 'Thermo' ? '' : 'none';
   $('blankEveryField').classList.toggle('collapsed', $('blankInterval').value !== 'every');
-  $('fnamePrev').textContent = c.outputName;
+  $('downloadBtn').textContent = '⤓ Download ' + currentExport.ext.toUpperCase();
+  $('fnamePrev').textContent = exportName();
 
   // staged (painted-but-not-yet-added) summary + which method the next Add will use
   const s = stagedCounts();
@@ -371,6 +392,7 @@ function setInstrument(inst) {
   document.querySelectorAll('#instSeg button').forEach(x => x.setAttribute('aria-pressed', x.dataset.inst === inst));
   $('thermoMethodField').classList.toggle('collapsed', inst !== 'Thermo');
   $('lcMethodField').classList.toggle('collapsed', inst !== 'Sciex');
+  $('brukerSepField').classList.toggle('collapsed', inst !== 'Bruker');
 }
 $('instSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-inst]'); if (!b) return;
@@ -718,12 +740,14 @@ $('randomRadios').addEventListener('change', e => {   // keyboard arrow-key swit
 $('cfg').addEventListener('input', () => { updatePreviewOnly(); saveSettings(); });
 
 async function saveText(name, data) {
+  const ext = (name.split('.').pop() || 'csv').toLowerCase();
+  const mime = { csv: 'text/csv', xml: 'application/xml', txt: 'text/plain' }[ext] || 'text/plain';
   // Preferred: native "Save As" dialog (Chromium browsers, secure context)
   if (window.showSaveFilePicker) {
     try {
       const handle = await window.showSaveFilePicker({
         suggestedName: name,
-        types: [{ description: 'CSV file', accept: { 'text/csv': ['.csv'] } }],
+        types: [{ description: ext.toUpperCase() + ' file', accept: { [mime]: ['.' + ext] } }],
       });
       const writable = await handle.createWritable();
       await writable.write(data);
@@ -735,16 +759,13 @@ async function saveText(name, data) {
       // any other error (e.g. unsupported / blocked) → fall back below
     }
   }
-  const blob = new Blob([data], { type: 'text/csv' });
+  const blob = new Blob([data], { type: mime });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
   flash(`↓ "${name}" → your Downloads folder`);
 }
-async function saveCSV() {
-  const name = cfg().outputName.endsWith('.csv') ? cfg().outputName : cfg().outputName + '.csv';
-  await saveText(name, currentCSV);
-}
+async function saveCSV() { await saveText(exportName(), currentExport.text); }
 // empty plate-layout scaffold (same grid the importer reads): header row + rows A–H
 function layoutTemplate() {
   const lines = [',' + COLS.join(',')];
@@ -754,7 +775,7 @@ function layoutTemplate() {
 $('downloadBtn').addEventListener('click', saveCSV);
 $('downloadLayoutBtn').addEventListener('click', () => saveText('plate_layout_template.csv', layoutTemplate()));
 $('copyBtn').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText(currentCSV); flash('Copied ✓'); } catch { flash('Copy failed'); }
+  try { await navigator.clipboard.writeText(currentExport.text); flash('Copied ✓'); } catch { flash('Copy failed'); }
 });
 function flash(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1400); }
 

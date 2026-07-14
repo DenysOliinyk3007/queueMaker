@@ -11,7 +11,7 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/styles.css?v=20">
+  <link rel="stylesheet" href="css/styles.css?v=21">
 </head>
 <body>
 
@@ -35,6 +35,7 @@
       <div class="seg" id="instSeg">
         <button type="button" data-inst="Thermo" aria-pressed="true">Thermo</button>
         <button type="button" data-inst="Sciex" aria-pressed="false">Sciex</button>
+        <button type="button" data-inst="Bruker" aria-pressed="false">Bruker</button>
       </div>
     </fieldset>
 
@@ -58,7 +59,7 @@
       </div>
       <div class="field row">
         <div><label class="lab" for="personalID">Personal ID</label><input type="text" id="personalID" placeholder="name-surname"></div>
-        <div><label class="lab" for="dateID">Date (YYYYMMDD)</label><input type="text" id="dateID"></div>
+        <div><label class="lab" for="dateID">Date (today, locked)</label><input type="text" id="dateID" readonly title="Always today's date"></div>
       </div>
       <div class="field">
         <label class="lab" for="expID">Experiment ID</label><input type="text" id="expID" placeholder="experiment">
@@ -78,6 +79,10 @@
       <div class="field collapsed" id="lcMethodField">
         <label class="lab" for="LCmethod">LC method (Sciex)</label>
         <input type="text" id="LCmethod" placeholder="LC-method-of-choice">
+      </div>
+      <div class="field collapsed" id="brukerSepField">
+        <label class="lab" for="brukerSep">Separation method (Bruker)</label>
+        <input type="text" id="brukerSep" placeholder="30 samples per day.m?HyStar_LC">
       </div>
     </fieldset>
 
@@ -234,6 +239,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20"></script>
+<script src="js/app.js?v=21"></script>
 </body>
 </html>
