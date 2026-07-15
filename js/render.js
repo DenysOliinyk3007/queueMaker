@@ -94,6 +94,7 @@ function updatePreviewOnly() {
   renderTable(q); renderStats(q);
   $('bracketNote').style.display = c.inst === 'Thermo' ? '' : 'none';
   $('blankEveryField').classList.toggle('collapsed', $('blankInterval').value !== 'every');
+  $('blankCountField').classList.toggle('collapsed', $('blankInterval').value === 'none');
   $('downloadBtn').textContent = '⤓ Download ' + currentExport.ext.toUpperCase();
   $('fnamePrev').textContent = exportName();
 

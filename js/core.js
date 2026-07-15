@@ -25,7 +25,7 @@ const $ = id => document.getElementById(id);
 
 // which text fields are remembered between visits (date is intentionally excluded — it resets to today)
 const STORE_KEY = 'queueMaker.settings.v1';
-const PERSIST_FIELDS = ['instID','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','brukerSep','output_name','blankBracket','blankInterval','blankEvery'];
+const PERSIST_FIELDS = ['instID','evosepNo','gradientID','personalID','expID','MSmethod','ThermoMethodPath','LCmethod','brukerSep','output_name','blankBracket','blankInterval','blankEvery','blankCount'];
 
 /* ---------- state (starts empty) ---------- */
 const state = {
@@ -67,6 +67,7 @@ function cfg() {
     blankBracket: Math.max(0, parseInt($('blankBracket').value || '0', 10)),
     blankInterval: $('blankInterval').value,                             // 'none' | 'every' | 'between'
     blankEvery: Math.max(1, parseInt($('blankEvery').value || '1', 10)),
+    blankCount: Math.max(1, parseInt($('blankCount').value || '1', 10)),   // how many blanks per break
   };
 }
 
