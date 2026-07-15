@@ -48,20 +48,21 @@ function insertBlanks(seq, c) {
   let bi = 0;
   const nextBlank = () => ({ type: 'blank', rack: c.blankRack, well: positions[(bi++) % positions.length], cfg: c, label: '' });
   const out = [];
+  const runBlanks = () => { for (let k = 0; k < Math.max(1, c.blankCount || 1); k++) out.push(nextBlank()); };   // N blanks per break
   for (let k = 0; k < c.blankBracket; k++) out.push(nextBlank());     // before the run
   if (c.blankInterval === 'every') {
     let n = 0;
-    for (const it of seq) { out.push(it); if (it.type === 'sample' && ++n % c.blankEvery === 0) out.push(nextBlank()); }
+    for (const it of seq) { out.push(it); if (it.type === 'sample' && ++n % c.blankEvery === 0) runBlanks(); }
   } else if (c.blankInterval === 'between') {
     let prev = null;
     for (const it of seq) {
-      if (it.type === 'sample') { const k = conditionKey(it); if (prev !== null && k !== prev) out.push(nextBlank()); prev = k; }
+      if (it.type === 'sample') { const k = conditionKey(it); if (prev !== null && k !== prev) runBlanks(); prev = k; }
       out.push(it);
     }
   } else if (c.blankInterval === 'betweenSlots') {
     let prev = null;
     for (const it of seq) {
-      if (it.type === 'sample') { if (prev !== null && it.rack !== prev) out.push(nextBlank()); prev = it.rack; }
+      if (it.type === 'sample') { if (prev !== null && it.rack !== prev) runBlanks(); prev = it.rack; }
       out.push(it);
     }
   } else {

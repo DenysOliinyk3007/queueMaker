@@ -11,12 +11,12 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/theme.css?v=31">
-  <link rel="stylesheet" href="css/base.css?v=31">
-  <link rel="stylesheet" href="css/plate.css?v=31">
-  <link rel="stylesheet" href="css/queue.css?v=31">
-  <link rel="stylesheet" href="css/modal.css?v=31">
-  <link rel="stylesheet" href="css/responsive.css?v=31">
+  <link rel="stylesheet" href="css/theme.css?v=33">
+  <link rel="stylesheet" href="css/base.css?v=33">
+  <link rel="stylesheet" href="css/plate.css?v=33">
+  <link rel="stylesheet" href="css/queue.css?v=33">
+  <link rel="stylesheet" href="css/modal.css?v=33">
+  <link rel="stylesheet" href="css/responsive.css?v=33">
 </head>
 <body>
 
@@ -166,6 +166,10 @@
         <label class="lab" for="blankEvery">Blank after every N samples</label>
         <input type="number" id="blankEvery" value="12" min="1" max="96">
       </div>
+      <div class="field collapsed" id="blankCountField">
+        <label class="lab" for="blankCount">Blanks inserted each time</label>
+        <input type="number" id="blankCount" value="1" min="1" max="20">
+      </div>
       </div>
     </fieldset>
 
@@ -274,6 +278,11 @@
           <b>Q4</b><select data-q="4" aria-label="Quadrant 4 rack"></select>
         </div>
       </div>
+      <div class="import-bar">
+        <button type="button" class="mini-btn" id="downloadLayout384Btn">⤓ Download layout</button>
+        <label class="mini-btn file-btn">⤒ Import layout CSV<input type="file" id="importFile384" accept=".csv,text/csv" hidden></label>
+        <span class="import-info" id="plate384importInfo">Download the 384-well grid, enter your sample names, and import it to paint the plate.</span>
+      </div>
       <div class="plate384-wrap"><div id="plate384grid"></div></div>
       <div class="modal-ft">
         <span class="import-info" id="plate384info"></span>
@@ -285,14 +294,14 @@
   </div>
 </div>
 
-<script src="js/core.js?v=31"></script>
-<script src="js/naming.js?v=31"></script>
-<script src="js/queue.js?v=31"></script>
-<script src="js/render.js?v=31"></script>
-<script src="js/interactions.js?v=31"></script>
-<script src="js/modal384.js?v=31"></script>
-<script src="js/ui.js?v=31"></script>
-<script src="js/io.js?v=31"></script>
-<script src="js/main.js?v=31"></script>
+<script src="js/core.js?v=33"></script>
+<script src="js/naming.js?v=33"></script>
+<script src="js/queue.js?v=33"></script>
+<script src="js/render.js?v=33"></script>
+<script src="js/interactions.js?v=33"></script>
+<script src="js/modal384.js?v=33"></script>
+<script src="js/ui.js?v=33"></script>
+<script src="js/io.js?v=33"></script>
+<script src="js/main.js?v=33"></script>
 </body>
 </html>
