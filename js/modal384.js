@@ -44,6 +44,16 @@ function translate384() {
   const rk = racks();
   const qTarget = {};   // quadrant → rack index (from the schema dropdowns)
   document.querySelectorAll('#qSchema select[data-q]').forEach(sel => { qTarget[sel.dataset.q] = rk.indexOf(sel.value); });
+  // pre-flight: if two quadrants point at the same rack, their wells land on the same position
+  const seen = new Set(), clashes = [];
+  for (const [id] of state.plate384) {
+    const { q, well96 } = to96(ROWS384.indexOf(id[0]), COLS384.indexOf(id.slice(1)));
+    const rackIdx = qTarget[q];
+    if (rackIdx == null || rackIdx < 0) continue;
+    const key = rackIdx + ':' + well96;
+    if (seen.has(key)) clashes.push(`${rk[rackIdx]} ${well96}`); else seen.add(key);
+  }
+  if (clashes.length && !window.confirm(`${clashes.length} rack position${clashes.length > 1 ? 's' : ''} would receive more than one sample because quadrants share a rack (e.g. ${[...new Set(clashes)].slice(0, 4).join(', ')}). Later wells overwrite earlier ones. Continue anyway?`)) return;
   const summary = { 1: 0, 2: 0, 3: 0, 4: 0 };
   for (const [id, cell] of state.plate384) {
     const rIdx = ROWS384.indexOf(id[0]), cIdx = COLS384.indexOf(id.slice(1));

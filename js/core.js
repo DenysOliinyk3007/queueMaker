@@ -50,8 +50,8 @@ function todayStamp() { const d = new Date(); const p = n => String(n).padStart(
 $('dateID').value = todayStamp();
 
 
-/* value, falling back to the field's placeholder example when left empty */
-function val(id) { const el = $(id); return (el.value.trim() || el.placeholder || '').trim(); }
+/* trimmed field value; empty stays empty (placeholders are examples, never real output) */
+function val(id) { return $(id).value.trim(); }
 
 function cfg() {
   return {

@@ -108,17 +108,19 @@ function updatePreviewOnly() {
     ? `<b>${s.total}</b> painted (${parts.join(' · ')}) → will use method <b>${escapeHtml(c.MSmethod)}</b>`
     : 'Nothing painted yet — paint wells, then click Add.';
 
-  // Experiment ID is required
-  const noExp = !$('expID').value.trim();
-  $('expID').classList.toggle('invalid', noExp);
-  $('expIDwarn').hidden = !noExp;
+  // required text fields — empty ones would otherwise emit placeholder text into the queue
+  const req = (id, warnId) => { const miss = !$(id).value.trim(); $(id).classList.toggle('invalid', miss); $(warnId).hidden = !miss; return miss; };
+  const noExp  = req('expID', 'expIDwarn');
+  const noPers = req('personalID', 'personalIDwarn');
+  const noMeth = req('MSmethod', 'msMethodWarn');
+  const blocked = noExp || noPers || noMeth;
 
-  const addDisabled = !s.total || noExp;
+  const addDisabled = !s.total || blocked;
   $('addBtn').disabled = addDisabled;
-  $('addBtnWrap').title = addDisabled ? 'Paint at least one well and add experiment ID' : '';
+  $('addBtnWrap').title = addDisabled ? 'Paint at least one well and fill all required (*) fields' : '';
   const empty = q.rows.length === 0;
-  $('downloadBtn').disabled = empty || noExp;
-  $('copyBtn').disabled = empty || noExp;
+  $('downloadBtn').disabled = empty || blocked;
+  $('copyBtn').disabled = empty || blocked;
   $('clearQueueBtn').disabled = empty;
   $('removeLastBtn').disabled = state.batches.length === 0;
   $('moveHereBtn').disabled = lastImportSlot === null;
