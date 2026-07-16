@@ -11,12 +11,12 @@
   <meta name="description" content="Interactive Evosep MS acquisition queue builder for Thermo and Sciex instruments — up to 6 plates, sample/blank/QC wells, CSV export with Bracket Type=4.">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ee7303'/><circle cx='11' cy='11' r='3' fill='%23fff'/><circle cx='21' cy='11' r='3' fill='%23fff' fill-opacity='.9'/><circle cx='11' cy='21' r='3' fill='%23fff' fill-opacity='.55'/><circle cx='21' cy='21' r='3' fill='%23fff' fill-opacity='.55'/></svg>">
-  <link rel="stylesheet" href="css/theme.css?v=33">
-  <link rel="stylesheet" href="css/base.css?v=33">
-  <link rel="stylesheet" href="css/plate.css?v=33">
-  <link rel="stylesheet" href="css/queue.css?v=33">
-  <link rel="stylesheet" href="css/modal.css?v=33">
-  <link rel="stylesheet" href="css/responsive.css?v=33">
+  <link rel="stylesheet" href="css/theme.css?v=34">
+  <link rel="stylesheet" href="css/base.css?v=34">
+  <link rel="stylesheet" href="css/plate.css?v=34">
+  <link rel="stylesheet" href="css/queue.css?v=34">
+  <link rel="stylesheet" href="css/modal.css?v=34">
+  <link rel="stylesheet" href="css/responsive.css?v=34">
 </head>
 <body>
 
@@ -90,7 +90,8 @@
         </div>
       </div>
       <div class="field row">
-        <div><label class="lab" for="personalID">Personal ID</label><input type="text" id="personalID" placeholder="name-surname"></div>
+        <div><label class="lab" for="personalID">Personal ID <span style="color:var(--danger)">*</span></label><input type="text" id="personalID" placeholder="name-surname" required>
+          <div class="hint err" id="personalIDwarn" hidden>Personal ID is required.</div></div>
         <div><label class="lab" for="dateID">Date</label><input type="text" id="dateID" readonly title="Always today's date"></div>
       </div>
       <div class="field">
@@ -104,8 +105,9 @@
       <legend><span class="fs-caret" aria-hidden="true">▸</span>Methods</legend>
       <div class="fs-body">
       <div class="field">
-        <label class="lab" for="MSmethod">MS method</label>
-        <input type="text" id="MSmethod" placeholder="method-of-choice">
+        <label class="lab" for="MSmethod">MS method <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="MSmethod" placeholder="method-of-choice" required>
+        <div class="hint err" id="msMethodWarn" hidden>MS method is required.</div>
       </div>
       <div class="field" id="thermoMethodField">
         <label class="lab" for="ThermoMethodPath">Instrument method path (Thermo)</label>
@@ -294,14 +296,14 @@
   </div>
 </div>
 
-<script src="js/core.js?v=33"></script>
-<script src="js/naming.js?v=33"></script>
-<script src="js/queue.js?v=33"></script>
-<script src="js/render.js?v=33"></script>
-<script src="js/interactions.js?v=33"></script>
-<script src="js/modal384.js?v=33"></script>
-<script src="js/ui.js?v=33"></script>
-<script src="js/io.js?v=33"></script>
-<script src="js/main.js?v=33"></script>
+<script src="js/core.js?v=34"></script>
+<script src="js/naming.js?v=34"></script>
+<script src="js/queue.js?v=34"></script>
+<script src="js/render.js?v=34"></script>
+<script src="js/interactions.js?v=34"></script>
+<script src="js/modal384.js?v=34"></script>
+<script src="js/ui.js?v=34"></script>
+<script src="js/io.js?v=34"></script>
+<script src="js/main.js?v=34"></script>
 </body>
 </html>

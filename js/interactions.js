@@ -2,7 +2,9 @@
 
 /* ---------- committed queue actions ---------- */
 function addToQueue() {
-  if (!$('expID').value.trim()) { flash('Enter an Experiment ID first'); return; }
+  const missing = [['expID', 'Experiment ID'], ['personalID', 'Personal ID'], ['MSmethod', 'MS method']]
+    .filter(([id]) => !$(id).value.trim()).map(([, lbl]) => lbl);
+  if (missing.length) { flash('Fill in required field' + (missing.length > 1 ? 's' : '') + ': ' + missing.join(', ')); return; }
   const items = [];
   const rackLabels = racks();
   state.plates.forEach((wells, i) => {
